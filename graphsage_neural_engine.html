@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GraphSAGE — Neural Engine</title>
+    <style>
+      :root {
+        --bg-0: #050b14;
+        --bg-1: #0a1420;
+        --panel: #101c2e;
+        --panel-border: #1e2d45;
+        --cyan: #22d3ee;
+        --blue: #3b82f6;
+        --amber: #f5b942;
+        --text-primary: #e6edf5;
+        --text-muted: #6b7d99;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: radial-gradient(
+          ellipse at 50% 30%,
+          var(--bg-1) 0%,
+          var(--bg-0) 65%
+        );
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        min-height: 520px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .grid-overlay {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.045) 1px, transparent 1px);
+        background-size: 36px 36px;
+        mask-image: radial-gradient(
+          ellipse at 50% 45%,
+          black 10%,
+          transparent 72%
+        );
+        pointer-events: none;
+      }
+      .header {
+        position: absolute;
+        top: 22px;
+        left: 26px;
+        line-height: 1.3;
+        pointer-events: none;
+      }
+      .header .eyebrow {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      .header .throughput {
+        font-family:
+          "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 20px;
+        color: var(--cyan);
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+      .header .throughput span {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin-left: 6px;
+      }
+      .info-panel {
+        position: absolute;
+        bottom: 22px;
+        right: 26px;
+        width: min(300px, 40vw);
+        background: rgba(16, 28, 46, 0.82);
+        border: 1px solid var(--panel-border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        backdrop-filter: blur(6px);
+        transition: border-color 0.25s ease;
+      }
+      .info-panel.lit {
+        border-color: rgba(245, 185, 66, 0.55);
+      }
+      .info-panel .title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+      .info-panel .rate {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 13px;
+        color: var(--amber);
+        margin-bottom: 6px;
+      }
+      .info-panel .desc {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+        max-width: 1100px;
+      }
+      .envelope {
+        stroke: rgba(34, 211, 238, 0.28);
+        stroke-width: 1.2;
+      }
+      .edge {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 0.9;
+        stroke-opacity: 0.75;
+      }
+      .particle {
+        fill: var(--amber);
+      }
+      .gnode {
+        fill: var(--panel);
+        stroke: var(--cyan);
+        stroke-width: 1.4;
+        cursor: pointer;
+        transition: stroke 0.2s ease;
+      }
+      .gnode.hover-lit {
+        stroke: var(--amber);
+      }
+      .out-halo {
+        fill: var(--amber);
+        opacity: 0.14;
+      }
+      .out-node {
+        fill: var(--amber);
+        stroke: var(--amber);
+      }
+      .ping {
+        fill: none;
+        stroke: var(--amber);
+        stroke-width: 1.3;
+      }
+      .layer-caption {
+        font-size: 11.5px;
+        fill: var(--text-muted);
+        text-anchor: middle;
+      }
+      .hit {
+        fill: transparent;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="grid-overlay"></div>
+
+      <div class="header">
+        <div class="eyebrow">Stage 3B · GraphSAGE Neural Engine</div>
+        <div class="throughput" id="throughput">
+          0 <span>messages passed</span>
+        </div>
+      </div>
+
+      <div class="info-panel" id="infoPanel">
+        <div class="title" id="infoTitle">Risk Output</div>
+        <div class="rate" id="infoRate">Spatial message passing</div>
+        <div class="desc" id="infoDesc">
+          Hover any node to see what that layer represents in the transaction
+          graph.
+        </div>
+      </div>
+
+      <svg
+        viewBox="0 0 1000 640"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Aligned columns of a graph neural network funneling from a dense transaction layer into a single high-risk output node"
+      >
+        <defs>
+          <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="2.4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="megaGlow" x="-200%" y="-200%" width="500%" height="500%">
+            <feGaussianBlur stdDeviation="15" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <text x="90" y="24" class="layer-caption">Transaction graph</text>
+        <text x="380" y="24" class="layer-caption">Hidden layer 1</text>
+        <text x="650" y="24" class="layer-caption">Hidden layer 2</text>
+        <text x="920" y="24" class="layer-caption">Risk output</text>
+
+        <g id="envelopeLayer" filter="url(#softGlow)"></g>
+        <g id="edgeLayer"></g>
+        <g id="pingLayer" filter="url(#softGlow)"></g>
+        <g id="particleLayer" filter="url(#glow)"></g>
+        <g id="nodeLayer"></g>
+      </svg>
+    </div>
+
+    <script>
+      (function () {
+        var svgns = "http://www.w3.org/2000/svg";
+        var envelopeLayer = document.getElementById("envelopeLayer");
+        var edgeLayer = document.getElementById("edgeLayer");
+        var particleLayer = document.getElementById("particleLayer");
+        var pingLayer = document.getElementById("pingLayer");
+        var nodeLayer = document.getElementById("nodeLayer");
+
+        var yMin = 50,
+          yMax = 590,
+          ySpan = yMax - yMin,
+          cy0 = (yMin + yMax) / 2;
+
+        function columnPoints(x, count) {
+          var pts = [];
+          var step = count > 1 ? ySpan / (count - 1) : 0;
+          for (var i = 0; i < count; i++) {
+            pts.push({ x: x, y: yMin + step * i });
+          }
+          return pts;
+        }
+
+        var columns = [
+          { x: 90, count: 32 },
+          { x: 380, count: 20 },
+          { x: 650, count: 10 },
+        ];
+
+        var layerPoints = columns.map(function (c) {
+          return columnPoints(c.x, c.count);
+        });
+        layerPoints.push([{ x: 920, y: cy0 }]); // output column
+
+        var layerMeta = [
+          {
+            name: "Transaction Node",
+            desc: "A raw entity or account from the AML graph, holding its own local transaction features.",
+          },
+          {
+            name: "Hidden Layer 1",
+            desc: "First-hop neighbor embeddings, aggregated and pooled via GraphSAGE sampling.",
+          },
+          {
+            name: "Hidden Layer 2",
+            desc: "Second-hop signals combined — each node now encodes a full local subgraph.",
+          },
+          {
+            name: "Risk Output",
+            desc: "Aggregates 2-hop neighbor embeddings into a single fraud-risk signal, ready for fusion.",
+          },
+        ];
+
+        // one glowing oval per aligned column
+        columns.forEach(function (c) {
+          var e = document.createElementNS(svgns, "ellipse");
+          e.setAttribute("cx", c.x);
+          e.setAttribute("cy", cy0);
+          e.setAttribute("rx", 30);
+          e.setAttribute("ry", ySpan / 2 + 32);
+          e.setAttribute("class", "envelope");
+          e.setAttribute("fill", "rgba(34,211,238,0.07)");
+          envelopeLayer.appendChild(e);
+        });
+
+        function nearestIdx(fromY, targets, k) {
+          var idxs = targets.map(function (_, i) {
+            return i;
+          });
+          idxs.sort(function (a, b) {
+            return (
+              Math.abs(targets[a].y - fromY) - Math.abs(targets[b].y - fromY)
+            );
+          });
+          return idxs.slice(0, Math.min(k, targets.length));
+        }
+        function connectPts(a, b, k) {
+          var edges = [];
+          a.forEach(function (pt) {
+            nearestIdx(pt.y, b, k).forEach(function (bi) {
+              edges.push({ x1: pt.x, y1: pt.y, x2: b[bi].x, y2: b[bi].y });
+            });
+          });
+          return edges;
+        }
+
+        var allEdges = [];
+        [
+          connectPts(layerPoints[0], layerPoints[1], 1),
+          connectPts(layerPoints[1], layerPoints[2], 1),
+          connectPts(layerPoints[2], layerPoints[3], 1),
+        ].forEach(function (g) {
+          allEdges = allEdges.concat(g);
+        });
+
+        allEdges.forEach(function (e, idx) {
+          var pid = "edge" + idx;
+          var path = document.createElementNS(svgns, "path");
+          path.setAttribute("id", pid);
+          path.setAttribute("class", "edge");
+          path.setAttribute(
+            "d",
+            "M" + e.x1 + "," + e.y1 + " L" + e.x2 + "," + e.y2,
+          );
+          edgeLayer.appendChild(path);
+
+          var p = document.createElementNS(svgns, "circle");
+          p.setAttribute("r", "2.6");
+          p.setAttribute("class", "particle");
+          var anim = document.createElementNS(svgns, "animateMotion");
+          anim.setAttribute(
+            "dur",
+            (0.55 + Math.random() * 0.5).toFixed(2) + "s",
+          );
+          anim.setAttribute("repeatCount", "indefinite");
+          anim.setAttribute("begin", (Math.random() * 1.4).toFixed(2) + "s");
+          var mpath = document.createElementNS(svgns, "mpath");
+          mpath.setAttributeNS(
+            "http://www.w3.org/1999/xlink",
+            "href",
+            "#" + pid,
+          );
+          anim.appendChild(mpath);
+          p.appendChild(anim);
+          particleLayer.appendChild(p);
+        });
+
+        layerPoints.forEach(function (pts, li) {
+          var isOutput = li === 3;
+          pts.forEach(function (pt) {
+            var g = document.createElementNS(svgns, "g");
+
+            if (isOutput) {
+              var halo = document.createElementNS(svgns, "circle");
+              halo.setAttribute("cx", pt.x);
+              halo.setAttribute("cy", pt.y);
+              halo.setAttribute("r", "70");
+              halo.setAttribute("class", "out-halo");
+              halo.setAttribute("filter", "url(#megaGlow)");
+              nodeLayer.appendChild(halo);
+            }
+
+            var circle = document.createElementNS(svgns, "circle");
+            circle.setAttribute("cx", pt.x);
+            circle.setAttribute("cy", pt.y);
+            circle.setAttribute("r", isOutput ? 32 : 5.5);
+            circle.setAttribute(
+              "class",
+              "gnode" + (isOutput ? " out-node" : ""),
+            );
+            circle.setAttribute("filter", "url(#glow)");
+            g.appendChild(circle);
+
+            var hit = document.createElementNS(svgns, "circle");
+            hit.setAttribute("cx", pt.x);
+            hit.setAttribute("cy", pt.y);
+            hit.setAttribute("r", isOutput ? 42 : 11);
+            hit.setAttribute("class", "hit");
+            g.appendChild(hit);
+
+            g.addEventListener("mouseenter", function () {
+              circle.classList.add("hover-lit");
+              var m = layerMeta[li];
+              infoTitle.textContent = m.name;
+              infoRate.textContent = isOutput
+                ? "Fraud-risk score"
+                : "Layer " + (li + 1);
+              infoDesc.textContent = m.desc;
+              infoPanel.classList.add("lit");
+            });
+            g.addEventListener("mouseleave", function () {
+              circle.classList.remove("hover-lit");
+              resetInfo();
+            });
+            nodeLayer.appendChild(g);
+          });
+        });
+
+        var out = layerPoints[3][0];
+        for (var r = 0; r < 3; r++) {
+          var ring = document.createElementNS(svgns, "circle");
+          ring.setAttribute("class", "ping");
+          ring.setAttribute("cx", out.x);
+          ring.setAttribute("cy", out.y);
+          ring.setAttribute("r", "0");
+          var a1 = document.createElementNS(svgns, "animate");
+          a1.setAttribute("attributeName", "r");
+          a1.setAttribute("values", "0;120");
+          a1.setAttribute("dur", "2.2s");
+          a1.setAttribute("begin", r * 0.7 + "s");
+          a1.setAttribute("repeatCount", "indefinite");
+          var a2 = document.createElementNS(svgns, "animate");
+          a2.setAttribute("attributeName", "opacity");
+          a2.setAttribute("values", "0.75;0");
+          a2.setAttribute("dur", "2.2s");
+          a2.setAttribute("begin", r * 0.7 + "s");
+          a2.setAttribute("repeatCount", "indefinite");
+          ring.appendChild(a1);
+          ring.appendChild(a2);
+          pingLayer.appendChild(ring);
+        }
+
+        var infoPanel = document.getElementById("infoPanel");
+        var infoTitle = document.getElementById("infoTitle");
+        var infoRate = document.getElementById("infoRate");
+        var infoDesc = document.getElementById("infoDesc");
+        function resetInfo() {
+          infoTitle.textContent = "Risk Output";
+          infoRate.textContent = "Spatial message passing";
+          infoDesc.textContent =
+            "Hover any node to see what that layer represents in the transaction graph.";
+          infoPanel.classList.remove("lit");
+        }
+
+        var throughputEl = document.getElementById("throughput");
+        var total = 0;
+        setInterval(function () {
+          total += Math.floor(2200 + Math.random() * 4200);
+          throughputEl.innerHTML =
+            total.toLocaleString() + " <span>messages passed</span>";
+        }, 450);
+
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          var svgEl = document.querySelector("svg");
+          if (typeof svgEl.pauseAnimations === "function")
+            svgEl.pauseAnimations();
+        }
+      })();
+    </script>
+  </body>
+</html>

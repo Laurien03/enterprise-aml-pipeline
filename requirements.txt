@@ -1,0 +1,9 @@
+gradio
+pandas
+numpy
+scikit-learn
+xgboost
+torch
+torch-geometric
+networkx
+streamlit
