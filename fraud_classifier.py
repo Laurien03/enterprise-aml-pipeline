@@ -87,8 +87,11 @@ class GraphSageClassifier(nn.Module):
     def torch_conversion(self, enriched_train, reference_train, y_train):
 
         # 🗂️ 1. TRANSLATING NODE FEATURES (x)
-        tensor_features = torch.tensor(
-            enriched_train.values, dtype=torch.float32)
+        # Selecting only numerical columns (filters out strings, timestamps, object IDs)
+        numeric_df = enriched_train.select_dtypes(include=['number', 'bool'])
+        # Converting to float32 NumPy array and PyTorch Tensor
+        features_array = numeric_df.to_numpy(dtype=np.float32)
+        tensor_features = torch.from_numpy(features_array)
 
         # labels (y) into a PyTorch Tensor
         tensor_labels = torch.tensor(y_train.values, dtype=torch.long)
