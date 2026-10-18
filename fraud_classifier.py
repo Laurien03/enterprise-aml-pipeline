@@ -102,8 +102,8 @@ class GraphSageClassifier(nn.Module):
         sources = reference_train['Account_Node_ID'].values
         targets = reference_train['To_Bank_Node_ID'].values
 
-        edge_index_list = [sources, targets]
-        edge_index = torch.tensor(edge_index_list, dtype=torch.long)
+        edge_index_numpy = ([sources, targets])
+        edge_index = torch.tensor(edge_index_numpy, dtype=torch.long)
 
         # Parcking Pytorch Geometric Data Object
 
