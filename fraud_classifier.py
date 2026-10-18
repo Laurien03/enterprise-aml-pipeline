@@ -180,7 +180,7 @@ class GraphSageClassifier(nn.Module):
         # 2.Running a forward pass to get predictions for the whole graph
 
         with torch.no_grad():
-            out = self(graph_data.X, graph_data.edge_index)
+            out = self(graph_data.x, graph_data.edge_index)
 
         # 4 Conversion :
         # A .The guessing matrix logs into hard 0 or 1 classifications
