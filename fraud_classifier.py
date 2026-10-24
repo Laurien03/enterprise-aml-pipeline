@@ -37,13 +37,22 @@ class XGBoostClassifier:
         self.model.fit(X_train, y_train)
         print("✅ Model Tuned & Trained.")
 
-    def evaluate_model(self, X_eval, y_eval):
+    def evaluate_model(self, X_eval, y_eval, threshold=0.25):
 
         # 1.Computation
+
         print("Model Evaluating..")
-        predictions = self.model.predict(X_eval)
+
+        # Probabilities
+        probabilities = self.model.predict_proba(X_eval)[:, 1]
+        # predictions
+        predictions = (probabilities >= threshold).astype(int)
+
+        # Accuarcy
         accuracy = accuracy_score(y_eval, predictions)
+        # confusion matrix
         matrix = confusion_matrix(y_pred=predictions, y_true=y_eval)
+        # classfication report
         model_report = classification_report(y_pred=predictions, y_true=y_eval)
 
         # 2.Display
@@ -58,8 +67,6 @@ class XGBoostClassifier:
         print("\n📋  Classification Report:")
         print(model_report)
 
-        # Probabilities
-        probabilities = self.model.predict_proba(X_eval)[:, 1]
         return probabilities
 
 

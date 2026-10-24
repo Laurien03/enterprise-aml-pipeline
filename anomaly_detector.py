@@ -8,23 +8,16 @@ class AnomalyDetector:
         self.model = IsolationForest(
             contamination=0.1, random_state=42, n_jobs=-1)
 
-    def anomalies_detection(self, X, y, ref_df):
+    def anomalies_scores_extraction(self, X, y, ref_df):
+        print("🌲 Fitting Isolation Forest and extracting anomaly scores...")
         # Model Initiation
 
-        iso_predictions = self.model.fit(X)
-        X['Anomaly_Score'] = -self.model.decision_function(X)
+        self.model.fit(X)
+        X_enriched = X.copy()
 
-        # IsolationForest returns 1 for normal, -1 for anomaly
-        # We create a boolean mask to keep only the normal (1) rows
-        mask = (iso_predictions == 1)
+        X_enriched['Anomaly_Score'] = -self.model.decision_function(X)
 
-        # Filtering all three dataframes synchronously to maintain the strict index lock!
-        X_filtred = X[mask].copy()
-        y_filtered = y.iloc[mask].copy()
-        ref_filtered = ref_df.iloc[mask].copy()
-        dropped_count = len(X)-len(X_filtred)  # checking dropped accounts
+        print("✅ Anomaly_Score attached. 0 rows dropped!\n")
 
-        print(f"🛑 Isolation Forest removed {dropped_count:,} noisy rows.\n")
-
-        # predictions --->filtered data
-        return X, y, ref_df
+        # full enriched data
+        return X_enriched, y, ref_df
