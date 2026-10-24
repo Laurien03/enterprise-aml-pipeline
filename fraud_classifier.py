@@ -44,9 +44,11 @@ class XGBoostClassifier:
         # 1.Computation
 
         print("Model Evaluating..")
+        # Filter numeric features to match training
+        X_eval_clean = X_eval.select_dtypes(include=['number', 'bool'])
 
         # Probabilities
-        probabilities = self.model.predict_proba(X_eval)[:, 1]
+        probabilities = self.model.predict_proba(X_eval_clean)[:, 1]
         # predictions
         predictions = (probabilities >= threshold).astype(int)
 
