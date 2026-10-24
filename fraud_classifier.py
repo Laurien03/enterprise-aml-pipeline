@@ -197,10 +197,10 @@ class GraphSageClassifier(nn.Module):
 
         # 3. Create DataFrame for the 32 embedding dimensions
         emb_cols = [f'sage_emb_{i}' for i in range(node_embeddings.shape[1])]
-
+        # Map string IDs to node indices
+        mapped_series = reference_df['Account_Node_ID'].map(node_mapping)
         # 4. Map transactions back to node integer indices to fetch structural vectors
-        mapped_indices = reference_df['Account_Node_ID'].map(
-            node_mapping).values
+        mapped_indices = mapped_series.fillna(0).astype(int).values
 
         # 5. Extract corresponding embedding rows and attach to DataFrame
         tx_embeddings = node_embeddings[mapped_indices]
