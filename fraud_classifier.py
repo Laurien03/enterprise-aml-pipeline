@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import xgboost as xgb
 import torch
 import torch.nn as nn
@@ -6,6 +7,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 from torch_geometric.data import Data
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from graph_analyzer import GraphAnalyzer
 
 
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
@@ -75,9 +77,11 @@ class XGBoostClassifier:
 
 class GraphSageClassifier(nn.Module):
 
-    def __init__(self, in_channels, hidden_channels, out_channels=2):
+    def __init__(self, in_channels, hidden_channels, out_channels=32):
         # initialization of parent nn.Module
+
         super(GraphSageClassifier, self).__init__()
+        self.classfier = nn.Linear(out_channels, 1)
 
         # Initialize the GraphSAGE Classifier.
         # in_channels: Number of input features per node.
@@ -92,32 +96,25 @@ class GraphSageClassifier(nn.Module):
 
 # -------Data Conversion in Tensor
 
-    def torch_conversion(self, enriched_train, reference_train, y_train):
+    def torch_conversion(self, enriched_train, reference_train, y_train, edge_index):
 
         # 🗂️ 1. TRANSLATING NODE FEATURES (x)
         # Selecting only numerical columns (filters out strings, timestamps, object IDs)
         numeric_df = enriched_train.select_dtypes(include=['number', 'bool'])
         # Converting to float32 NumPy array and PyTorch Tensor
-        features_array = numeric_df.to_numpy(dtype=np.float32)
-        tensor_features = torch.from_numpy(features_array)
+        feature_array = numeric_df.to_numpy(dtype=np.float32)
+        tensor_features = torch.from_numpy(feature_array)
 
         # labels (y) into a PyTorch Tensor
-        tensor_labels = torch.tensor(y_train.values, dtype=torch.long)
-
+        tensor_labels = torch.tensor(y_train.values, dtype=torch.float32)
         # Creation of the edge_index (The Network Connections)
-
-        sources = reference_train['Account_Node_ID'].values
-        targets = reference_train['To_Bank_Node_ID'].values
-
-        edge_index_numpy = ([sources, targets])
-        edge_index = torch.tensor(edge_index_numpy, dtype=torch.long)
 
         # Parcking Pytorch Geometric Data Object
 
         graph_data = Data(x=tensor_features, y=tensor_labels,
                           edge_index=edge_index)
 
-        # Returning a new Data() object,
+        # Returning the Data() object,
 
         return graph_data
 
@@ -136,7 +133,7 @@ class GraphSageClassifier(nn.Module):
 
         # returning the converted Log-softmax Proabilities
 
-        return F.log_softmax(X, dim=1)
+        return X
 
     def train_model(self, graph_data, epochs=100, lr=0.01):
 
@@ -154,12 +151,18 @@ class GraphSageClassifier(nn.Module):
         class_weights = torch.tensor(
             [1.0, clean_count / fraud_count], dtype=torch.float32)
 
+        pos_weight = torch.tensor(
+            [clean_count / fraud_count], dtype=torch.float32)
+
         for epoch in range(epochs):
             self.optimizer.zero_grad()
 
             out = self(graph_data.x, graph_data.edge_index)
 
-            loss = F.nll_loss(out, graph_data.y, weight=class_weights)
+            logits_shape = self.classfier(out).squeeze()
+
+            loss = F.binary_cross_entropy_with_logits(
+                logits_shape, graph_data.y, pos_weight=pos_weight)
 
             # backward pass
 
@@ -177,7 +180,7 @@ class GraphSageClassifier(nn.Module):
 
      # ----Model Evaluation-----
 
-    def evaluate_model(self, graph_data):
+    def extract_embeddings(self, graph_data, df_enriched, reference_df, node_mapping):
         print("Model Evaluating..")
 
         # 1.Activate Evaluation Mode ----- #Turnning off dropout protections so predictions are stable and frozen
@@ -187,30 +190,23 @@ class GraphSageClassifier(nn.Module):
         # 2.Running a forward pass to get predictions for the whole graph
 
         with torch.no_grad():
-            out = self(graph_data.x, graph_data.edge_index)
+            node_embeddings = self(
+                graph_data.x, graph_data.edge_index).cpu().numpy()
 
-        # 4 Conversion :
-        # A .The guessing matrix logs into hard 0 or 1 classifications
-        # argmax(dim=1) picks the column index (0 or 1) that had the highest probability
-        predictions = out.argmax(dim=1)
-        # B.Pytorch Tensors back to standrd Numpy arrays fro sklearn
-        y_true = graph_data.y.cpu().numpy()
-        y_pred = predictions.cpu().numpy()
+        # 3. Create DataFrame for the 32 embedding dimensions
+        emb_cols = [f'sage_emb_{i}' for i in range(node_embeddings.shape[1])]
 
-        # 5 Calculation of the corporate metrics
+        # 4. Map transactions back to node integer indices to fetch structural vectors
+        mapped_indices = reference_df['Account_Node_ID'].map(
+            node_mapping).values
 
-        accuracy = accuracy_score(y_true=y_true, y_pred=y_pred)
-        matrix = confusion_matrix(y_true=y_true, y_pred=y_pred)
-        report = classification_report(y_true=y_true, y_pred=y_pred)
+        # 5. Extract corresponding embedding rows and attach to DataFrame
+        tx_embeddings = node_embeddings[mapped_indices]
+        emb_df = pd.DataFrame(
+            tx_embeddings, columns=emb_cols, index=df_enriched.index)
 
-        # 6 Print the operational report
-        print(f"✅ Evaluation Complete! Accuracy: {accuracy * 100:.2f}%\n")
-        print("🧩 Confusion Matrix:")
-        print(matrix)
-        print("\n📋 Cassification Report:")
-        print(report)
+        df_fully_enriched = pd.concat([df_enriched, emb_df], axis=1)
+        print(
+            f"✅ Successfully attached {len(emb_cols)} GraphSAGE embedding features!")
 
-        # 7. Returning the probabilities
-        # [:, 1] grabs the probability specifically for Class 1 (Fraud).
-        probabilities = torch.exp(out)[:, 1].cpu().numpy()
-        return probabilities
+        return df_fully_enriched
