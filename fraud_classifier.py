@@ -98,7 +98,7 @@ class GraphSageClassifier(nn.Module):
 
 # -------Data Conversion in Tensor
 
-    def torch_conversion(self, enriched_train, reference_train, y_train, edge_index):
+    def torch_conversion(self, enriched_train, y_train, edge_index):
 
         # 🗂️ 1. TRANSLATING NODE FEATURES (x)
         # Selecting only numerical columns (filters out strings, timestamps, object IDs)
