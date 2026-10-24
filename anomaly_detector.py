@@ -8,10 +8,11 @@ class AnomalyDetector:
         self.model = IsolationForest(
             contamination=0.1, random_state=42, n_jobs=-1)
 
-    def filter_anomalies(self, X, y, ref_df):
+    def anomalies_detection(self, X, y, ref_df):
         # Model Initiation
 
-        iso_predictions = self.model.fit_predict(X)
+        iso_predictions = self.model.fit(X)
+        X['Anomaly_Score'] = -self.model.decision_function(X)
 
         # IsolationForest returns 1 for normal, -1 for anomaly
         # We create a boolean mask to keep only the normal (1) rows
@@ -26,4 +27,4 @@ class AnomalyDetector:
         print(f"🛑 Isolation Forest removed {dropped_count:,} noisy rows.\n")
 
         # predictions --->filtered data
-        return X_filtred, y_filtered, ref_filtered
+        return X, y, ref_df
