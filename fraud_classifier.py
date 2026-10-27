@@ -39,7 +39,7 @@ class XGBoostClassifier:
         self.model.fit(X_train, y_train)
         print("✅ Model Tuned & Trained.")
 
-    def evaluate_model(self, X_eval, y_eval, threshold=0.25):
+    def evaluate_model(self, X_eval, y_eval, threshold=0.65):
 
         # 1.Computation
 
