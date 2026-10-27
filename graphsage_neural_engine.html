@@ -8,12 +8,13 @@
         --bg-0: #050b14;
         --bg-1: #0a1420;
         --panel: #101c2e;
-        --panel-border: #1e2d45;
+        --panel-border: #2a3e5c;
         --cyan: #22d3ee;
         --blue: #3b82f6;
         --amber: #f5b942;
-        --text-primary: #e6edf5;
-        --text-muted: #6b7d99;
+        --text-primary: #f4f8fc;
+        --text-dim: #b4c3d8;
+        --text-muted: #7f92ad;
       }
       * {
         box-sizing: border-box;
@@ -25,9 +26,9 @@
         height: 100%;
         width: 100%;
         background: radial-gradient(
-          ellipse at 50% 30%,
+          ellipse at 50% 35%,
           var(--bg-1) 0%,
-          var(--bg-0) 65%
+          var(--bg-0) 68%
         );
         font-family:
           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -38,131 +39,332 @@
         position: relative;
         width: 100%;
         height: 100vh;
-        min-height: 520px;
+        min-height: 700px;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        flex-direction: column;
       }
       .grid-overlay {
         position: absolute;
         inset: 0;
         background-image:
-          linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(34, 211, 238, 0.045) 1px, transparent 1px);
-        background-size: 36px 36px;
+          linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
         mask-image: radial-gradient(
-          ellipse at 50% 45%,
-          black 10%,
-          transparent 72%
+          ellipse at 50% 50%,
+          black 12%,
+          transparent 75%
         );
         pointer-events: none;
       }
+
       .header {
-        position: absolute;
-        top: 22px;
-        left: 26px;
-        line-height: 1.3;
+        position: relative;
+        padding: 24px 30px 0 30px;
+        line-height: 1.25;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px 28px;
+        flex-wrap: wrap;
         pointer-events: none;
       }
       .header .eyebrow {
-        font-size: 12.5px;
-        color: var(--text-muted);
-        font-weight: 500;
-      }
-      .header .throughput {
-        font-family:
-          "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
-        font-size: 20px;
-        color: var(--cyan);
-        font-variant-numeric: tabular-nums;
-        margin-top: 2px;
-      }
-      .header .throughput span {
-        color: var(--text-muted);
-        font-size: 13px;
-        margin-left: 6px;
-      }
-      .info-panel {
-        position: absolute;
-        bottom: 22px;
-        right: 26px;
-        width: min(300px, 40vw);
-        background: rgba(16, 28, 46, 0.82);
-        border: 1px solid var(--panel-border);
-        border-radius: 10px;
-        padding: 14px 16px;
-        backdrop-filter: blur(6px);
-        transition: border-color 0.25s ease;
-      }
-      .info-panel.lit {
-        border-color: rgba(245, 185, 66, 0.55);
-      }
-      .info-panel .title {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 28px;
+        font-weight: 800;
         color: var(--text-primary);
-        margin-bottom: 4px;
+        letter-spacing: 0.2px;
       }
-      .info-panel .rate {
-        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
-        font-size: 13px;
+      .header .phase {
+        font-size: 19px;
+        font-weight: 600;
         color: var(--amber);
-        margin-bottom: 6px;
+        margin-top: 8px;
       }
-      .info-panel .desc {
-        font-size: 12.5px;
-        line-height: 1.5;
-        color: var(--text-muted);
+
+      /* training telemetry badge */
+      .badge {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        background: rgba(16, 28, 46, 0.92);
+        border: 1.5px solid rgba(34, 211, 238, 0.5);
+        border-radius: 999px;
+        padding: 13px 26px 15px 22px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+      .badge b {
+        color: var(--cyan);
+        font-weight: 800;
+      }
+      .badge .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 14px;
+        background: var(--cyan);
+        box-shadow: 0 0 10px var(--cyan);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      .badge .div {
+        width: 1.5px;
+        height: 26px;
+        background: var(--panel-border);
+        margin: 0 18px;
+      }
+      .badge .bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 4px;
+        background: rgba(34, 211, 238, 0.14);
+      }
+      .badge .bar i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--cyan);
+        animation: epochs 6s linear infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      @keyframes epochs {
+        from {
+          width: 0;
+        }
+        to {
+          width: 100%;
+        }
+      }
+
+      .flow {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 12px 0 12px;
       }
       svg {
         width: 100%;
         height: 100%;
-        max-width: 1100px;
+        max-width: 1800px;
       }
-      .envelope {
-        stroke: rgba(34, 211, 238, 0.28);
-        stroke-width: 1.2;
+
+      .info-panel {
+        position: relative;
+        align-self: flex-end;
+        width: min(900px, calc(100% - 52px));
+        margin: 0 26px 22px 26px;
+        min-height: 170px; /* fixed footprint: diagram never rescales on hover */
+        background: rgba(16, 28, 46, 0.9);
+        border: 1.5px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 16px 22px 18px 22px;
+        backdrop-filter: blur(6px);
+        transition: border-color 0.25s ease;
       }
+      .info-panel.lit {
+        border-color: rgba(245, 185, 66, 0.7);
+      }
+      .info-panel .title {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+      }
+      .info-panel .rate {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--amber);
+        margin-bottom: 8px;
+      }
+      .info-panel .desc {
+        font-size: 19px;
+        line-height: 1.5;
+        color: var(--text-dim);
+      }
+
+      /* streams */
       .edge {
         fill: none;
         stroke: var(--panel-border);
-        stroke-width: 0.9;
-        stroke-opacity: 0.75;
+        stroke-width: 1.6;
+        stroke-opacity: 0.8;
+        transition: stroke 0.25s ease;
+      }
+      .conduit {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 4;
+        stroke-opacity: 0.95;
+        transition:
+          stroke 0.25s ease,
+          stroke-width 0.25s ease;
+      }
+      .stem {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 2.5;
+        stroke-dasharray: 6 6;
+        transition: stroke 0.25s ease;
+      }
+      [data-stream].active .edge {
+        stroke: var(--amber);
+        stroke-opacity: 0.95;
+      }
+      [data-stream].active .conduit {
+        stroke: var(--amber);
+        stroke-width: 5;
+      }
+      [data-stream].active .stem {
+        stroke: var(--amber);
       }
       .particle {
         fill: var(--amber);
       }
-      .gnode {
-        fill: var(--panel);
-        stroke: var(--cyan);
-        stroke-width: 1.4;
-        cursor: pointer;
-        transition: stroke 0.2s ease;
+      .particle.cyan {
+        fill: var(--cyan);
       }
-      .gnode.hover-lit {
-        stroke: var(--amber);
-      }
-      .out-halo {
-        fill: var(--amber);
-        opacity: 0.14;
-      }
-      .out-node {
-        fill: var(--amber);
-        stroke: var(--amber);
+
+      .envelope {
+        fill: rgba(34, 211, 238, 0.07);
+        stroke: rgba(34, 211, 238, 0.34);
+        stroke-width: 1.6;
       }
       .ping {
         fill: none;
-        stroke: var(--amber);
-        stroke-width: 1.3;
+        stroke: var(--cyan);
+        stroke-width: 2.4;
       }
-      .layer-caption {
-        font-size: 11.5px;
-        fill: var(--text-muted);
+
+      .gnode {
+        fill: var(--panel);
+        stroke: var(--cyan);
+        stroke-width: 2.6;
+        transition:
+          stroke 0.2s ease,
+          fill 0.2s ease;
+      }
+      .cell {
+        fill: rgba(245, 185, 66, 0.3);
+        stroke: var(--amber);
+        stroke-width: 1.4;
+      }
+      .node {
+        cursor: pointer;
+      }
+      .node.hot .gnode {
+        stroke: var(--amber);
+        fill: #1a2a44;
+      }
+      .node.hot .cell {
+        fill: rgba(245, 185, 66, 0.7);
+      }
+      .node:focus {
+        outline: none;
+      }
+      .node:focus-visible .gnode,
+      .node:focus-visible .node-panel {
+        stroke: var(--amber);
+      }
+      .node-hit {
+        fill: transparent;
+      }
+
+      .node-panel {
+        fill: var(--panel);
+        stroke: var(--panel-border);
+        stroke-width: 4;
+        transition:
+          stroke 0.2s ease,
+          fill 0.2s ease;
+      }
+      .node.primary .node-panel {
+        stroke: var(--cyan);
+      }
+      .node.next .node-panel {
+        stroke: var(--cyan);
+        stroke-dasharray: 13 9;
+      }
+      .node.hot .node-panel {
+        stroke: var(--amber);
+        fill: #16263f;
+        stroke-dasharray: none;
+      }
+      .node-icon {
+        stroke: var(--text-primary);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .node-label {
+        font-size: 34px;
+        font-weight: 800;
+        fill: var(--text-primary);
+        text-anchor: middle;
+        letter-spacing: 0.2px;
+      }
+      .node-sub {
+        font-size: 24px;
+        font-weight: 700;
+        fill: var(--amber);
         text-anchor: middle;
       }
-      .hit {
-        fill: transparent;
-        cursor: pointer;
+      .col-label {
+        font-size: 25px;
+        font-weight: 800;
+        fill: var(--text-primary);
+        text-anchor: middle;
+      }
+      .col-sub {
+        font-size: 21px;
+        font-weight: 700;
+        fill: var(--amber);
+        text-anchor: middle;
+      }
+      .pill-text {
+        font-size: 24px;
+        font-weight: 800;
+        fill: var(--cyan);
+        text-anchor: middle;
+      }
+      .pill-text.amber {
+        fill: var(--amber);
+      }
+
+      @media (max-width: 760px) {
+        .header .eyebrow {
+          font-size: 22px;
+        }
+        .badge {
+          font-size: 16px;
+        }
+        .info-panel .desc {
+          font-size: 16px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .badge .dot,
+        .badge .bar i {
+          animation: none;
+        }
+        .badge .bar i {
+          width: 100%;
+        }
       }
     </style>
   </head>
@@ -171,293 +373,623 @@
       <div class="grid-overlay"></div>
 
       <div class="header">
-        <div class="eyebrow">Stage 3B · GraphSAGE Neural Engine</div>
-        <div class="throughput" id="throughput">
-          0 <span>messages passed</span>
+        <div>
+          <div class="eyebrow">Stage 3B · GraphSAGE Neural Engine</div>
+          <div class="phase">
+            Graph Analyzer → PyG Edge Tensors → GraphSAGE → 32 Embeddings for
+            XGBoost
+          </div>
         </div>
+        <div
+          class="badge"
+          role="status"
+          aria-label="Training telemetry: 100 epochs, loss 1.41, 32 GNN embeddings attached"
+        >
+          <span class="dot"></span>
+          <span><b>100</b> Epochs</span><span class="div"></span>
+          <span>Loss: <b>1.41</b></span
+          ><span class="div"></span>
+          <span><b>32</b> GNN Embeddings Attached</span>
+          <span class="bar"><i></i></span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <svg
+          viewBox="0 0 1700 620"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="Animated pipeline: the Graph Analyzer builds a network of 449K+ nodes and 800K+ edges, passes PyG edge tensors into GraphSAGE, whose hidden layers distill 32 sage_emb embedding features that are handed to XGBoost."
+        >
+          <defs>
+            <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="3.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="softGlow" x="-60%" y="-30%" width="220%" height="160%">
+              <feGaussianBlur stdDeviation="7" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="nodeGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g id="envelopeLayer" filter="url(#softGlow)"></g>
+
+          <!-- fixed conduits and tag stems -->
+          <g id="fixedStreams">
+            <g data-stream="in">
+              <path id="c-in" class="conduit" d="M255,270 L494,270" />
+              <path class="stem" d="M350,178 L350,270" />
+            </g>
+            <g data-stream="out">
+              <path id="c-out" class="conduit" d="M1271,270 L1455,270" />
+              <path class="stem" d="M1372,178 L1372,270" />
+            </g>
+          </g>
+          <g id="edgeLayer"></g>
+
+          <!-- radar pings from the Graph Analyzer -->
+          <g opacity="0.55" filter="url(#glow)">
+            <circle class="ping" cx="160" cy="270" r="95">
+              <animate
+                attributeName="r"
+                values="95;165"
+                dur="3s"
+                begin="0s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="0s"
+                repeatCount="indefinite"
+              />
+            </circle>
+            <circle class="ping" cx="160" cy="270" r="95">
+              <animate
+                attributeName="r"
+                values="95;165"
+                dur="3s"
+                begin="1.5s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="1.5s"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </g>
+
+          <g id="particleLayer" filter="url(#glow)"></g>
+          <g id="nodeLayer"></g>
+
+          <!-- Graph Analyzer -->
+          <g
+            class="node primary"
+            data-id="ga"
+            tabindex="0"
+            role="button"
+            aria-label="Graph Analyzer"
+            transform="translate(160,270)"
+          >
+            <circle class="node-panel" r="95" filter="url(#nodeGlow)" />
+            <g
+              class="node-icon"
+              fill="none"
+              stroke-width="1.25"
+              transform="translate(0,-2) scale(4.2)"
+            >
+              <line x1="-10" y1="-8" x2="9" y2="-3" />
+              <line x1="-10" y1="-8" x2="-6" y2="10" />
+              <line x1="9" y1="-3" x2="-6" y2="10" />
+              <line x1="9" y1="-3" x2="10" y2="9" />
+              <line x1="-6" y1="10" x2="10" y2="9" />
+              <circle cx="-10" cy="-8" r="3" fill="var(--cyan)" stroke="none" />
+              <circle cx="9" cy="-3" r="3" fill="var(--cyan)" stroke="none" />
+              <circle cx="-6" cy="10" r="3" fill="var(--cyan)" stroke="none" />
+              <circle cx="10" cy="9" r="3" fill="var(--cyan)" stroke="none" />
+            </g>
+            <text class="node-label" y="152">Graph Analyzer</text>
+            <text class="node-sub" y="188">449K+ nodes</text>
+            <text class="node-sub" y="218">800K+ edges</text>
+            <circle class="node-hit" r="108" />
+            <rect class="node-hit" x="-135" y="118" width="270" height="116" />
+          </g>
+
+          <!-- XGBoost (next step) -->
+          <g
+            class="node next"
+            data-id="xgb"
+            tabindex="0"
+            role="button"
+            aria-label="XGBoost, next step"
+            transform="translate(1545,270)"
+          >
+            <circle class="node-panel" r="85" />
+            <g
+              class="node-icon"
+              fill="none"
+              stroke-width="1.3"
+              transform="translate(0,1) scale(3.5)"
+            >
+              <line x1="0" y1="-11" x2="-9" y2="-1" />
+              <line x1="0" y1="-11" x2="9" y2="-1" />
+              <line x1="-9" y1="1" x2="-14" y2="12" />
+              <line x1="-9" y1="1" x2="-4" y2="12" />
+              <line x1="9" y1="1" x2="4" y2="12" />
+              <line x1="9" y1="1" x2="14" y2="12" />
+              <circle
+                cx="0"
+                cy="-13"
+                r="2.6"
+                fill="var(--cyan)"
+                stroke="none"
+              />
+              <circle
+                cx="-9"
+                cy="-1"
+                r="2.6"
+                fill="var(--cyan)"
+                stroke="none"
+              />
+              <circle cx="9" cy="-1" r="2.6" fill="var(--cyan)" stroke="none" />
+              <circle
+                cx="-14"
+                cy="13"
+                r="2.2"
+                fill="var(--amber)"
+                stroke="none"
+              />
+              <circle
+                cx="-4"
+                cy="13"
+                r="2.2"
+                fill="var(--amber)"
+                stroke="none"
+              />
+              <circle
+                cx="4"
+                cy="13"
+                r="2.2"
+                fill="var(--amber)"
+                stroke="none"
+              />
+              <circle
+                cx="14"
+                cy="13"
+                r="2.2"
+                fill="var(--amber)"
+                stroke="none"
+              />
+            </g>
+            <text class="node-label" y="140">XGBoost</text>
+            <text class="node-sub" y="174">Ready for training</text>
+            <circle class="node-hit" r="98" />
+            <rect class="node-hit" x="-120" y="108" width="240" height="80" />
+          </g>
+
+          <!-- intermediary tags -->
+          <g
+            class="node pill"
+            data-id="tensors"
+            tabindex="0"
+            role="button"
+            aria-label="PyG edge tensors"
+            transform="translate(350,150)"
+          >
+            <rect
+              class="node-panel"
+              x="-134"
+              y="-28"
+              width="268"
+              height="56"
+              rx="28"
+            />
+            <text class="pill-text" y="9">PyG Edge Tensors</text>
+            <rect class="node-hit" x="-144" y="-36" width="288" height="72" />
+          </g>
+          <g
+            class="node pill"
+            data-id="embpill"
+            tabindex="0"
+            role="button"
+            aria-label="sage_emb features hand-off"
+            transform="translate(1372,150)"
+          >
+            <rect
+              class="node-panel"
+              x="-97"
+              y="-28"
+              width="194"
+              height="56"
+              rx="28"
+            />
+            <text class="pill-text amber" y="9">sage_emb_*</text>
+            <rect class="node-hit" x="-107" y="-36" width="214" height="72" />
+          </g>
+        </svg>
       </div>
 
       <div class="info-panel" id="infoPanel">
-        <div class="title" id="infoTitle">Risk Output</div>
-        <div class="rate" id="infoRate">Spatial message passing</div>
+        <div class="title" id="infoTitle">GraphSAGE Neural Engine</div>
+        <div class="rate" id="infoRate">
+          Graph → edge tensors → 32 structural embeddings
+        </div>
         <div class="desc" id="infoDesc">
-          Hover any node to see what that layer represents in the transaction
-          graph.
+          Hover any node, layer or tag to see how the transaction graph becomes
+          embedding features for XGBoost.
         </div>
       </div>
-
-      <svg
-        viewBox="0 0 1000 640"
-        preserveAspectRatio="xMidYMid meet"
-        role="img"
-        aria-label="Aligned columns of a graph neural network funneling from a dense transaction layer into a single high-risk output node"
-      >
-        <defs>
-          <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
-            <feGaussianBlur stdDeviation="2.4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="megaGlow" x="-200%" y="-200%" width="500%" height="500%">
-            <feGaussianBlur stdDeviation="15" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <text x="90" y="24" class="layer-caption">Transaction graph</text>
-        <text x="380" y="24" class="layer-caption">Hidden layer 1</text>
-        <text x="650" y="24" class="layer-caption">Hidden layer 2</text>
-        <text x="920" y="24" class="layer-caption">Risk output</text>
-
-        <g id="envelopeLayer" filter="url(#softGlow)"></g>
-        <g id="edgeLayer"></g>
-        <g id="pingLayer" filter="url(#softGlow)"></g>
-        <g id="particleLayer" filter="url(#glow)"></g>
-        <g id="nodeLayer"></g>
-      </svg>
     </div>
 
     <script>
       (function () {
         var svgns = "http://www.w3.org/2000/svg";
+        var svg = document.querySelector("svg");
         var envelopeLayer = document.getElementById("envelopeLayer");
         var edgeLayer = document.getElementById("edgeLayer");
         var particleLayer = document.getElementById("particleLayer");
-        var pingLayer = document.getElementById("pingLayer");
         var nodeLayer = document.getElementById("nodeLayer");
 
-        var yMin = 50,
-          yMax = 590,
-          ySpan = yMax - yMin,
-          cy0 = (yMin + yMax) / 2;
-
-        function columnPoints(x, count) {
-          var pts = [];
-          var step = count > 1 ? ySpan / (count - 1) : 0;
-          for (var i = 0; i < count; i++) {
-            pts.push({ x: x, y: yMin + step * i });
+        var yMin = 70,
+          ySpan = 400,
+          cy0 = yMin + ySpan / 2;
+        function colYs(n) {
+          var a = [];
+          for (var i = 0; i < n; i++) {
+            a.push(yMin + (i * ySpan) / (n - 1));
           }
-          return pts;
+          return a;
         }
 
-        var columns = [
-          { x: 90, count: 32 },
-          { x: 380, count: 20 },
-          { x: 650, count: 10 },
+        var layers = [
+          { id: "input", x: 540, r: 12, ys: colYs(12) },
+          { id: "h1", x: 770, r: 16, ys: colYs(9) },
+          { id: "h2", x: 1000, r: 20, ys: colYs(7) },
         ];
+        var cells = [];
+        for (var c = 0; c < 32; c++) {
+          cells.push(yMin + ((c + 0.5) * ySpan) / 32);
+        }
+        var stripX = 1217,
+          cellW = 42,
+          cellH = 10.6;
 
-        var layerPoints = columns.map(function (c) {
-          return columnPoints(c.x, c.count);
+        // glowing oval per column (and the embedding strip)
+        layers.forEach(function (l) {
+          addEnvelope(l.x, l.r + 34);
         });
-        layerPoints.push([{ x: 920, y: cy0 }]); // output column
-
-        var layerMeta = [
-          {
-            name: "Transaction Node",
-            desc: "A raw entity or account from the AML graph, holding its own local transaction features.",
-          },
-          {
-            name: "Hidden Layer 1",
-            desc: "First-hop neighbor embeddings, aggregated and pooled via GraphSAGE sampling.",
-          },
-          {
-            name: "Hidden Layer 2",
-            desc: "Second-hop signals combined — each node now encodes a full local subgraph.",
-          },
-          {
-            name: "Risk Output",
-            desc: "Aggregates 2-hop neighbor embeddings into a single fraud-risk signal, ready for fusion.",
-          },
-        ];
-
-        // one glowing oval per aligned column
-        columns.forEach(function (c) {
+        addEnvelope(stripX, 54);
+        function addEnvelope(x, rx) {
           var e = document.createElementNS(svgns, "ellipse");
-          e.setAttribute("cx", c.x);
+          e.setAttribute("cx", x);
           e.setAttribute("cy", cy0);
-          e.setAttribute("rx", 30);
-          e.setAttribute("ry", ySpan / 2 + 32);
+          e.setAttribute("rx", rx);
+          e.setAttribute("ry", ySpan / 2 + 34);
           e.setAttribute("class", "envelope");
-          e.setAttribute("fill", "rgba(34,211,238,0.07)");
           envelopeLayer.appendChild(e);
-        });
+        }
 
-        function nearestIdx(fromY, targets, k) {
-          var idxs = targets.map(function (_, i) {
+        function nearest(y, arr, k) {
+          var idx = arr.map(function (_, i) {
             return i;
           });
-          idxs.sort(function (a, b) {
-            return (
-              Math.abs(targets[a].y - fromY) - Math.abs(targets[b].y - fromY)
-            );
+          idx.sort(function (a, b) {
+            return Math.abs(arr[a] - y) - Math.abs(arr[b] - y);
           });
-          return idxs.slice(0, Math.min(k, targets.length));
+          return idx.slice(0, Math.min(k, arr.length));
         }
-        function connectPts(a, b, k) {
-          var edges = [];
-          a.forEach(function (pt) {
-            nearestIdx(pt.y, b, k).forEach(function (bi) {
-              edges.push({ x1: pt.x, y1: pt.y, x2: b[bi].x, y2: b[bi].y });
+
+        // message-passing edges between columns
+        var streams = { e01: [], e12: [], e23: [] };
+        layers[0].ys.forEach(function (y) {
+          nearest(y, layers[1].ys, 2).forEach(function (j) {
+            streams.e01.push([layers[0].x, y, layers[1].x, layers[1].ys[j]]);
+          });
+        });
+        layers[1].ys.forEach(function (y) {
+          nearest(y, layers[2].ys, 2).forEach(function (j) {
+            streams.e12.push([layers[1].x, y, layers[2].x, layers[2].ys[j]]);
+          });
+        });
+        layers[2].ys.forEach(function (y) {
+          nearest(y, cells, 5).forEach(function (j) {
+            streams.e23.push([layers[2].x, y, stripX - cellW / 2, cells[j]]);
+          });
+        });
+
+        var particleSpecs = []; // {pathId, dur, cls}
+        Object.keys(streams).forEach(function (sid) {
+          var g = document.createElementNS(svgns, "g");
+          g.setAttribute("data-stream", sid);
+          streams[sid].forEach(function (e, i) {
+            var pid = sid + "-" + i;
+            var p = document.createElementNS(svgns, "path");
+            p.setAttribute("id", pid);
+            p.setAttribute("class", "edge");
+            p.setAttribute(
+              "d",
+              "M" + e[0] + "," + e[1] + " L" + e[2] + "," + e[3],
+            );
+            g.appendChild(p);
+            particleSpecs.push({
+              stream: sid,
+              path: pid,
+              dur: 1.0 + Math.random() * 0.7,
+              cls: "",
             });
           });
-          return edges;
-        }
-
-        var allEdges = [];
-        [
-          connectPts(layerPoints[0], layerPoints[1], 1),
-          connectPts(layerPoints[1], layerPoints[2], 1),
-          connectPts(layerPoints[2], layerPoints[3], 1),
-        ].forEach(function (g) {
-          allEdges = allEdges.concat(g);
+          edgeLayer.appendChild(g);
+        });
+        particleSpecs.push({
+          stream: "in",
+          path: "c-in",
+          dur: 2.4,
+          cls: "cyan",
+          count: 5,
+        });
+        particleSpecs.push({
+          stream: "out",
+          path: "c-out",
+          dur: 2.2,
+          cls: "",
+          count: 5,
         });
 
-        allEdges.forEach(function (e, idx) {
-          var pid = "edge" + idx;
-          var path = document.createElementNS(svgns, "path");
-          path.setAttribute("id", pid);
-          path.setAttribute("class", "edge");
-          path.setAttribute(
-            "d",
-            "M" + e.x1 + "," + e.y1 + " L" + e.x2 + "," + e.y2,
-          );
-          edgeLayer.appendChild(path);
-
-          var p = document.createElementNS(svgns, "circle");
-          p.setAttribute("r", "2.6");
-          p.setAttribute("class", "particle");
-          var anim = document.createElementNS(svgns, "animateMotion");
-          anim.setAttribute(
-            "dur",
-            (0.55 + Math.random() * 0.5).toFixed(2) + "s",
-          );
-          anim.setAttribute("repeatCount", "indefinite");
-          anim.setAttribute("begin", (Math.random() * 1.4).toFixed(2) + "s");
-          var mpath = document.createElementNS(svgns, "mpath");
-          mpath.setAttributeNS(
-            "http://www.w3.org/1999/xlink",
-            "href",
-            "#" + pid,
-          );
-          anim.appendChild(mpath);
-          p.appendChild(anim);
-          particleLayer.appendChild(p);
-        });
-
-        layerPoints.forEach(function (pts, li) {
-          var isOutput = li === 3;
-          pts.forEach(function (pt) {
+        // particles, grouped per stream so hover can recolor them
+        var particleGroups = {};
+        function groupFor(stream) {
+          if (!particleGroups[stream]) {
             var g = document.createElementNS(svgns, "g");
-
-            if (isOutput) {
-              var halo = document.createElementNS(svgns, "circle");
-              halo.setAttribute("cx", pt.x);
-              halo.setAttribute("cy", pt.y);
-              halo.setAttribute("r", "70");
-              halo.setAttribute("class", "out-halo");
-              halo.setAttribute("filter", "url(#megaGlow)");
-              nodeLayer.appendChild(halo);
-            }
-
+            g.setAttribute("data-stream", stream);
+            particleLayer.appendChild(g);
+            particleGroups[stream] = g;
+          }
+          return particleGroups[stream];
+        }
+        particleSpecs.forEach(function (s) {
+          var n = s.count || 1;
+          for (var i = 0; i < n; i++) {
             var circle = document.createElementNS(svgns, "circle");
-            circle.setAttribute("cx", pt.x);
-            circle.setAttribute("cy", pt.y);
-            circle.setAttribute("r", isOutput ? 32 : 5.5);
+            circle.setAttribute("r", s.count ? "6.5" : "4.6");
             circle.setAttribute(
               "class",
-              "gnode" + (isOutput ? " out-node" : ""),
+              "particle" + (s.cls ? " " + s.cls : ""),
             );
-            circle.setAttribute("filter", "url(#glow)");
-            g.appendChild(circle);
-
-            var hit = document.createElementNS(svgns, "circle");
-            hit.setAttribute("cx", pt.x);
-            hit.setAttribute("cy", pt.y);
-            hit.setAttribute("r", isOutput ? 42 : 11);
-            hit.setAttribute("class", "hit");
-            g.appendChild(hit);
-
-            g.addEventListener("mouseenter", function () {
-              circle.classList.add("hover-lit");
-              var m = layerMeta[li];
-              infoTitle.textContent = m.name;
-              infoRate.textContent = isOutput
-                ? "Fraud-risk score"
-                : "Layer " + (li + 1);
-              infoDesc.textContent = m.desc;
-              infoPanel.classList.add("lit");
-            });
-            g.addEventListener("mouseleave", function () {
-              circle.classList.remove("hover-lit");
-              resetInfo();
-            });
-            nodeLayer.appendChild(g);
-          });
+            var anim = document.createElementNS(svgns, "animateMotion");
+            anim.setAttribute("dur", s.dur.toFixed(2) + "s");
+            anim.setAttribute("repeatCount", "indefinite");
+            anim.setAttribute(
+              "begin",
+              (-Math.random() * s.dur - i * (s.dur / n)).toFixed(2) + "s",
+            ); // negative: already mid-flight on load
+            var mpath = document.createElementNS(svgns, "mpath");
+            mpath.setAttributeNS(
+              "http://www.w3.org/1999/xlink",
+              "href",
+              "#" + s.path,
+            );
+            anim.appendChild(mpath);
+            circle.appendChild(anim);
+            groupFor(s.stream).appendChild(circle);
+          }
         });
 
-        var out = layerPoints[3][0];
-        for (var r = 0; r < 3; r++) {
-          var ring = document.createElementNS(svgns, "circle");
-          ring.setAttribute("class", "ping");
-          ring.setAttribute("cx", out.x);
-          ring.setAttribute("cy", out.y);
-          ring.setAttribute("r", "0");
-          var a1 = document.createElementNS(svgns, "animate");
-          a1.setAttribute("attributeName", "r");
-          a1.setAttribute("values", "0;120");
-          a1.setAttribute("dur", "2.2s");
-          a1.setAttribute("begin", r * 0.7 + "s");
-          a1.setAttribute("repeatCount", "indefinite");
-          var a2 = document.createElementNS(svgns, "animate");
-          a2.setAttribute("attributeName", "opacity");
-          a2.setAttribute("values", "0.75;0");
-          a2.setAttribute("dur", "2.2s");
-          a2.setAttribute("begin", r * 0.7 + "s");
-          a2.setAttribute("repeatCount", "indefinite");
-          ring.appendChild(a1);
-          ring.appendChild(a2);
-          pingLayer.appendChild(ring);
-        }
+        var meta = {
+          ga: {
+            title: "Graph Analyzer",
+            tag: "449K+ nodes · 800K+ edges",
+            desc: "Constructs the transaction network first: more than 449K nodes joined by more than 800K edges. That graph is the input GraphSAGE learns from.",
+          },
+          tensors: {
+            title: "PyG Edge Tensors",
+            tag: "Graph → tensor hand-off",
+            desc: "The graph is converted into PyTorch Geometric edge tensors, the format GraphSAGE consumes.",
+          },
+          input: {
+            title: "Input Layer",
+            tag: "Node features in",
+            desc: "Every node in the graph enters the network carrying its own features, ready to exchange information with its neighbors.",
+          },
+          h1: {
+            title: "Hidden Layer 1",
+            tag: "Aggregate neighbors",
+            desc: "Each node samples and aggregates its direct neighbors' features, so every representation now reflects its immediate surroundings.",
+          },
+          h2: {
+            title: "Hidden Layer 2",
+            tag: "2-hop context",
+            desc: "A second round of message passing pulls in neighbors of neighbors, so each node encodes its 2-hop neighborhood.",
+          },
+          strip: {
+            title: "32 Structural Embeddings",
+            tag: "sage_emb_*",
+            desc: "Training across 100 epochs distills these spatial patterns into 32 structural embedding features, named sage_emb_*, attached to every record.",
+          },
+          embpill: {
+            title: "sage_emb_* Features",
+            tag: "GraphSAGE → XGBoost hand-off",
+            desc: "The 32 embedding features travel to XGBoost alongside the tabular features, anomaly scores and graph centralities.",
+          },
+          xgb: {
+            title: "XGBoost",
+            tag: "Receives the 32 embeddings",
+            desc: "XGBoost trains on the fused feature set, with the 32 GraphSAGE embeddings supplying the neighborhood-level structure it can't see in tabular data alone.",
+          },
+        };
+
+        var links = {
+          ga: ["in"],
+          tensors: ["in"],
+          input: ["in", "e01"],
+          h1: ["e01", "e12"],
+          h2: ["e12", "e23"],
+          strip: ["e23", "out"],
+          embpill: ["out"],
+          xgb: ["out"],
+        };
 
         var infoPanel = document.getElementById("infoPanel");
         var infoTitle = document.getElementById("infoTitle");
         var infoRate = document.getElementById("infoRate");
         var infoDesc = document.getElementById("infoDesc");
-        function resetInfo() {
-          infoTitle.textContent = "Risk Output";
-          infoRate.textContent = "Spatial message passing";
+
+        function setActive(id) {
+          var lit = links[id] || [];
+          document.querySelectorAll("[data-stream]").forEach(function (el) {
+            el.classList.toggle(
+              "active",
+              lit.indexOf(el.getAttribute("data-stream")) > -1,
+            );
+          });
+          document.querySelectorAll(".node").forEach(function (n) {
+            n.classList.toggle("hot", n.getAttribute("data-id") === id);
+          });
+          var d = meta[id];
+          if (d) {
+            infoTitle.textContent = d.title;
+            infoRate.textContent = d.tag;
+            infoDesc.textContent = d.desc;
+            infoPanel.classList.add("lit");
+          }
+        }
+        function clearActive() {
+          document.querySelectorAll("[data-stream]").forEach(function (el) {
+            el.classList.remove("active");
+          });
+          document.querySelectorAll(".node").forEach(function (n) {
+            n.classList.remove("hot");
+          });
+          infoTitle.textContent = "GraphSAGE Neural Engine";
+          infoRate.textContent =
+            "Graph → edge tensors → 32 structural embeddings";
           infoDesc.textContent =
-            "Hover any node to see what that layer represents in the transaction graph.";
+            "Hover any node, layer or tag to see how the transaction graph becomes embedding features for XGBoost.";
           infoPanel.classList.remove("lit");
         }
+        function wire(node, id) {
+          node.addEventListener("mouseenter", function () {
+            setActive(id);
+          });
+          node.addEventListener("mouseleave", clearActive);
+          node.addEventListener("focus", function () {
+            setActive(id);
+          });
+          node.addEventListener("blur", clearActive);
+        }
 
-        var throughputEl = document.getElementById("throughput");
-        var total = 0;
-        setInterval(function () {
-          total += Math.floor(2200 + Math.random() * 4200);
-          throughputEl.innerHTML =
-            total.toLocaleString() + " <span>messages passed</span>";
-        }, 450);
+        // neural-column nodes
+        layers.forEach(function (l) {
+          var g = document.createElementNS(svgns, "g");
+          g.setAttribute("class", "node");
+          g.setAttribute("data-id", l.id);
+          g.setAttribute("tabindex", "0");
+          g.setAttribute("role", "button");
+          g.setAttribute("aria-label", meta[l.id].title);
+          l.ys.forEach(function (y) {
+            var c = document.createElementNS(svgns, "circle");
+            c.setAttribute("cx", l.x);
+            c.setAttribute("cy", y);
+            c.setAttribute("r", l.r);
+            c.setAttribute("class", "gnode");
+            c.setAttribute("filter", "url(#glow)");
+            g.appendChild(c);
+          });
+          var hit = document.createElementNS(svgns, "rect");
+          hit.setAttribute("x", l.x - (l.r + 34));
+          hit.setAttribute("y", cy0 - (ySpan / 2 + 34));
+          hit.setAttribute("width", (l.r + 34) * 2);
+          hit.setAttribute("height", ySpan + 68);
+          hit.setAttribute("class", "node-hit");
+          g.appendChild(hit);
+          nodeLayer.appendChild(g);
+          wire(g, l.id);
+        });
+
+        // embedding strip: 32 cells that shimmer in sequence
+        var sg = document.createElementNS(svgns, "g");
+        sg.setAttribute("class", "node");
+        sg.setAttribute("data-id", "strip");
+        sg.setAttribute("tabindex", "0");
+        sg.setAttribute("role", "button");
+        sg.setAttribute("aria-label", "32 structural embeddings");
+        cells.forEach(function (y, i) {
+          var r = document.createElementNS(svgns, "rect");
+          r.setAttribute("x", stripX - cellW / 2);
+          r.setAttribute("y", y - cellH / 2);
+          r.setAttribute("width", cellW);
+          r.setAttribute("height", cellH);
+          r.setAttribute("rx", "3");
+          r.setAttribute("class", "cell");
+          r.setAttribute("filter", "url(#glow)");
+          var a = document.createElementNS(svgns, "animate");
+          a.setAttribute("attributeName", "fill-opacity");
+          a.setAttribute("values", "0.35;1;0.35");
+          a.setAttribute("dur", "2.4s");
+          a.setAttribute("begin", (-2.4 + i * 0.075).toFixed(3) + "s");
+          a.setAttribute("repeatCount", "indefinite");
+          r.appendChild(a);
+          sg.appendChild(r);
+        });
+        var shit = document.createElementNS(svgns, "rect");
+        shit.setAttribute("x", stripX - 58);
+        shit.setAttribute("y", cy0 - (ySpan / 2 + 34));
+        shit.setAttribute("width", "116");
+        shit.setAttribute("height", ySpan + 68);
+        shit.setAttribute("class", "node-hit");
+        sg.appendChild(shit);
+        nodeLayer.appendChild(sg);
+        wire(sg, "strip");
+
+        // column captions
+        var captions = [
+          { x: layers[0].x, a: "Input Layer", b: "Node features" },
+          { x: layers[1].x, a: "Hidden Layer 1", b: "Aggregate neighbors" },
+          { x: layers[2].x, a: "Hidden Layer 2", b: "2-hop context" },
+          { x: stripX, a: "32 Embeddings", b: "sage_emb_*" },
+        ];
+        captions.forEach(function (c) {
+          var t1 = document.createElementNS(svgns, "text");
+          t1.setAttribute("x", c.x);
+          t1.setAttribute("y", "548");
+          t1.setAttribute("class", "col-label");
+          t1.textContent = c.a;
+          var t2 = document.createElementNS(svgns, "text");
+          t2.setAttribute("x", c.x);
+          t2.setAttribute("y", "582");
+          t2.setAttribute("class", "col-sub");
+          t2.textContent = c.b;
+          svg.appendChild(t1);
+          svg.appendChild(t2);
+        });
+
+        // static nodes and tags
+        ["ga", "xgb", "tensors", "embpill"].forEach(function (id) {
+          var el = document.querySelector('.node[data-id="' + id + '"]');
+          if (el) wire(el, id);
+        });
 
         if (
           window.matchMedia &&
           window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ) {
-          var svgEl = document.querySelector("svg");
-          if (typeof svgEl.pauseAnimations === "function")
-            svgEl.pauseAnimations();
+          if (typeof svg.pauseAnimations === "function") svg.pauseAnimations();
         }
       })();
     </script>

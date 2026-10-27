@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Compliance Risk Fusion — Final Report</title>
+    <style>
+      :root {
+        --bg-0: #050b14;
+        --bg-1: #0a1420;
+        --panel: #101c2e;
+        --panel-border: #2a3e5c;
+        --cyan: #22d3ee;
+        --blue: #3b82f6;
+        --amber: #f5b942;
+        --text-primary: #f4f8fc;
+        --text-dim: #b4c3d8;
+        --text-muted: #7f92ad;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: radial-gradient(
+          ellipse at 30% 50%,
+          var(--bg-1) 0%,
+          var(--bg-0) 68%
+        );
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        min-height: 700px;
+        display: flex;
+        flex-direction: column;
+      }
+      .grid-overlay {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(
+          ellipse at 38% 52%,
+          black 12%,
+          transparent 75%
+        );
+        pointer-events: none;
+      }
+      .header {
+        position: relative;
+        padding: 18px 30px 0 30px;
+        line-height: 1.2;
+        pointer-events: none;
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 4px 34px;
+      }
+      .header .eyebrow {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: 0.2px;
+      }
+      .header .metric {
+        font-family:
+          "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 40px;
+        font-weight: 800;
+        color: var(--amber);
+      }
+      .header .metric span {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 23px;
+        font-weight: 700;
+        color: var(--text-dim);
+        margin-left: 10px;
+      }
+      .header .phase {
+        flex-basis: 100%;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--cyan);
+      }
+
+      .flow {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px 6px 12px;
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+        max-width: 1900px;
+      }
+
+      .shield-fill {
+        fill: rgba(16, 28, 46, 0.62);
+      }
+      .shield-border {
+        fill: none;
+        stroke: var(--cyan);
+        stroke-width: 5;
+      }
+      .ring {
+        fill: none;
+        stroke: rgba(34, 211, 238, 0.3);
+        stroke-width: 1.8;
+      }
+      .ring-threshold {
+        fill: none;
+        stroke: var(--amber);
+        stroke-width: 3.5;
+        stroke-dasharray: 14 9;
+      }
+      .breach-zone {
+        fill: rgba(245, 185, 66, 0.07);
+        fill-rule: evenodd;
+      }
+      .spoke {
+        stroke: rgba(34, 211, 238, 0.2);
+        stroke-width: 1.6;
+      }
+      .lead-line {
+        stroke: var(--cyan);
+        stroke-width: 4.5;
+        stroke-linecap: round;
+      }
+      .clear-dot {
+        fill: rgba(34, 211, 238, 0.55);
+      }
+      .flag-dot {
+        fill: var(--amber);
+      }
+      .flag-ring {
+        fill: none;
+        stroke: var(--amber);
+        stroke-width: 3.5;
+      }
+      .scale-label {
+        font-size: 19px;
+        font-weight: 700;
+        fill: var(--text-dim);
+        text-anchor: end;
+        paint-order: stroke;
+        stroke: #050b14;
+        stroke-width: 6px;
+        stroke-linejoin: round;
+      }
+      .threshold-label {
+        font-size: 24px;
+        font-weight: 800;
+        fill: var(--amber);
+        text-anchor: middle;
+        paint-order: stroke;
+        stroke: #050b14;
+        stroke-width: 8px;
+        stroke-linejoin: round;
+      }
+      .radar-label {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        fill: var(--amber);
+        paint-order: stroke;
+        stroke: #050b14;
+        stroke-width: 9px;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+      .radar-score {
+        font-size: 23px;
+        font-weight: 700;
+        fill: var(--text-primary);
+        paint-order: stroke;
+        stroke: #050b14;
+        stroke-width: 8px;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+
+      /* right column */
+      .panel {
+        fill: rgba(16, 28, 46, 0.92);
+        stroke: var(--panel-border);
+        stroke-width: 2.5;
+        transition: stroke 0.25s ease;
+      }
+      .panel.lit {
+        stroke: rgba(245, 185, 66, 0.75);
+      }
+      .panel-title {
+        font-size: 33px;
+        font-weight: 800;
+        fill: var(--text-primary);
+      }
+      .panel-count {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 36px;
+        font-weight: 800;
+        fill: var(--amber);
+        text-anchor: end;
+      }
+      .panel-sub {
+        font-size: 21px;
+        font-weight: 600;
+        fill: var(--text-dim);
+      }
+      .col-head {
+        font-size: 19px;
+        font-weight: 700;
+        fill: var(--text-muted);
+      }
+      .row-bg {
+        fill: rgba(245, 185, 66, 1);
+        fill-opacity: 0.06;
+        stroke: rgba(245, 185, 66, 0.25);
+        stroke-width: 1.5;
+        transition: stroke 0.2s ease;
+      }
+      .row-id {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        fill: var(--text-primary);
+      }
+      .row-score {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        fill: var(--amber);
+        text-anchor: end;
+      }
+      .row-icon {
+        fill: var(--amber);
+      }
+      .case {
+        cursor: pointer;
+      }
+      .case.hot .row-bg {
+        stroke: var(--amber);
+        fill-opacity: 0.22;
+      }
+      .case:focus {
+        outline: none;
+      }
+      .case:focus-visible .row-bg {
+        stroke: var(--amber);
+        stroke-width: 3;
+      }
+      .hit {
+        fill: transparent;
+      }
+      .info-title {
+        font-size: 30px;
+        font-weight: 800;
+        fill: var(--text-primary);
+      }
+      .info-tag {
+        font-size: 22px;
+        font-weight: 700;
+        fill: var(--amber);
+      }
+      .info-desc {
+        font-size: 22px;
+        font-weight: 500;
+        fill: var(--text-dim);
+      }
+      .flow-line {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 4;
+      }
+      .flow-particle {
+        fill: var(--amber);
+      }
+
+      @media (max-width: 760px) {
+        .header .metric {
+          font-size: 30px;
+        }
+        .header .eyebrow {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="grid-overlay"></div>
+
+      <div class="header">
+        <div class="eyebrow">Stage 4 · Compliance Risk Fusion</div>
+        <div class="metric">7<span>Active Compliance Cases</span></div>
+        <div class="phase">
+          Accounts breaching the 0.65 decision threshold are escalated from the
+          fusion engine
+        </div>
+      </div>
+
+      <div class="flow">
+        <svg
+          viewBox="0 0 1400 785"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="A rotating compliance radar inside a glowing shield. Distance from the center is risk score. Seven accounts sit beyond the 0.65 decision threshold and flow into an active compliance case list."
+        >
+          <defs>
+            <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="9" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g id="shieldLayer" filter="url(#softGlow)"></g>
+          <g id="radarFace"></g>
+          <g id="spokeLayer"></g>
+          <g id="dotLayer"></g>
+          <g id="sweepGroup" filter="url(#glow)"></g>
+          <g id="labelLayer"></g>
+
+          <!-- case flow: fusion engine -> case list -->
+          <path id="flowPath" class="flow-line" d="M742,300 L806,300" />
+          <path
+            d="M798,284 L818,300 L798,316"
+            fill="none"
+            stroke="var(--amber)"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <g id="flowParticles" filter="url(#glow)"></g>
+
+          <!-- active compliance cases -->
+          <g id="casePanel">
+            <rect
+              class="panel"
+              x="820"
+              y="40"
+              width="560"
+              height="500"
+              rx="20"
+            />
+            <text class="panel-title" x="852" y="94">
+              Active Compliance Cases
+            </text>
+            <text class="panel-count" x="1348" y="94">7</text>
+            <text class="panel-sub" x="852" y="128">
+              Risk above the 0.65 decision threshold
+            </text>
+            <text class="col-head" x="852" y="166">Account</text>
+            <text class="col-head" x="1348" y="166" text-anchor="end">
+              Risk score
+            </text>
+            <g id="rowLayer"></g>
+          </g>
+
+          <!-- info card -->
+          <g id="infoCard">
+            <rect
+              id="infoBg"
+              class="panel"
+              x="820"
+              y="562"
+              width="560"
+              height="208"
+              rx="20"
+            />
+            <text id="infoTitle" class="info-title" x="852" y="608">
+              Compliance Radar
+            </text>
+            <text id="infoTag" class="info-tag" x="852" y="642">
+              Distance from center = risk score
+            </text>
+            <text id="infoDesc" class="info-desc" x="852" y="682"></text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var svgns = "http://www.w3.org/2000/svg";
+        var svg = document.querySelector("svg");
+        var CX = 372,
+          CY = 370,
+          R = 320,
+          T = 0.65,
+          SWEEP = 4; // SWEEP (seconds) matches the sweep rotation
+        var shieldLayer = document.getElementById("shieldLayer");
+        var radarFace = document.getElementById("radarFace");
+        var spokeLayer = document.getElementById("spokeLayer");
+        var dotLayer = document.getElementById("dotLayer");
+        var sweepGroup = document.getElementById("sweepGroup");
+        var labelLayer = document.getElementById("labelLayer");
+        var rowLayer = document.getElementById("rowLayer");
+
+        function el(name, attrs, parent) {
+          var e = document.createElementNS(svgns, name);
+          for (var k in attrs) {
+            e.setAttribute(k, attrs[k]);
+          }
+          if (parent) parent.appendChild(e);
+          return e;
+        }
+        function polar(angleDeg, frac) {
+          var a = (angleDeg * Math.PI) / 180;
+          return {
+            x: CX + R * frac * Math.sin(a),
+            y: CY - R * frac * Math.cos(a),
+          };
+        }
+
+        // ---------- shield, sized around the radar ----------
+        (function () {
+          var kx = (R + 36) / 220,
+            kt = (R + 28) / 215,
+            kb = (R + 70) / 290;
+          function X(x) {
+            return (CX + (x - 500) * kx).toFixed(1);
+          }
+          function Y(y) {
+            return (CY + (y - 340) * (y < 340 ? kt : kb)).toFixed(1);
+          }
+          function P(x, y) {
+            return X(x) + "," + Y(y);
+          }
+          var d =
+            "M" +
+            P(280, 180) +
+            " C" +
+            P(280, 130) +
+            " " +
+            P(380, 100) +
+            " " +
+            P(500, 125) +
+            " C" +
+            P(620, 100) +
+            " " +
+            P(720, 130) +
+            " " +
+            P(720, 180) +
+            " L" +
+            P(720, 400) +
+            " C" +
+            P(720, 510) +
+            " " +
+            P(620, 590) +
+            " " +
+            P(500, 630) +
+            " C" +
+            P(380, 590) +
+            " " +
+            P(280, 510) +
+            " " +
+            P(280, 400) +
+            " Z";
+          el("path", { class: "shield-fill", d: d }, shieldLayer);
+          var b = el("path", { class: "shield-border", d: d }, shieldLayer);
+          el(
+            "animate",
+            {
+              attributeName: "stroke-opacity",
+              values: "0.55;1;0.55",
+              dur: "3.2s",
+              repeatCount: "indefinite",
+            },
+            b,
+          );
+        })();
+
+        // ---------- radar face ----------
+        var rt = R * T;
+        el(
+          "path",
+          {
+            class: "breach-zone",
+            d:
+              "M" +
+              (CX - R) +
+              "," +
+              CY +
+              " a" +
+              R +
+              "," +
+              R +
+              " 0 1,0 " +
+              2 * R +
+              ",0 a" +
+              R +
+              "," +
+              R +
+              " 0 1,0 " +
+              -2 * R +
+              ",0 Z " +
+              "M" +
+              (CX - rt) +
+              "," +
+              CY +
+              " a" +
+              rt +
+              "," +
+              rt +
+              " 0 1,0 " +
+              2 * rt +
+              ",0 a" +
+              rt +
+              "," +
+              rt +
+              " 0 1,0 " +
+              -2 * rt +
+              ",0 Z",
+          },
+          radarFace,
+        );
+        [0.25, 0.5, 0.75, 1].forEach(function (f) {
+          el("circle", { class: "ring", cx: CX, cy: CY, r: R * f }, radarFace);
+        });
+        el(
+          "circle",
+          { class: "ring-threshold", cx: CX, cy: CY, r: rt },
+          radarFace,
+        );
+        for (var a = 0; a < 360; a += 45) {
+          var p = polar(a, 1);
+          el(
+            "line",
+            { class: "spoke", x1: CX, y1: CY, x2: p.x, y2: p.y },
+            spokeLayer,
+          );
+        }
+
+        // ---------- sweep: soft trailing wedge + bright leading edge ----------
+        var SLICES = 26,
+          STEP = 1.5,
+          wedge = el("g", {}, sweepGroup);
+        for (var s = SLICES - 1; s >= 0; s--) {
+          var p1 = polar(-(s + 1) * STEP, 1),
+            p2 = polar(-s * STEP, 1);
+          var op = 0.26 * Math.pow(1 - s / SLICES, 1.7);
+          el(
+            "path",
+            {
+              d:
+                "M" +
+                CX +
+                "," +
+                CY +
+                " L" +
+                p1.x +
+                "," +
+                p1.y +
+                " A" +
+                R +
+                "," +
+                R +
+                " 0 0,1 " +
+                p2.x +
+                "," +
+                p2.y +
+                " Z",
+              fill: "var(--cyan)",
+              "fill-opacity": op.toFixed(3),
+            },
+            wedge,
+          );
+        }
+        el(
+          "line",
+          { class: "lead-line", x1: CX, y1: CY, x2: CX, y2: CY - R },
+          sweepGroup,
+        );
+        el(
+          "animateTransform",
+          {
+            attributeName: "transform",
+            type: "rotate",
+            from: "0 " + CX + " " + CY,
+            to: "360 " + CX + " " + CY,
+            dur: SWEEP + "s",
+            repeatCount: "indefinite",
+          },
+          sweepGroup,
+        );
+
+        // ---------- profile silhouette (one glow filter on the group, so no seams) ----------
+        function addProfile(parent, x, y, size, cls, filterUrl) {
+          var g = el(
+            "g",
+            { transform: "translate(" + x + "," + y + ")" },
+            parent,
+          );
+          el(
+            "circle",
+            { cx: 0, cy: -size * 0.3, r: size * 0.24, class: cls },
+            g,
+          );
+          var bw = size * 0.42,
+            bt = -size * 0.02,
+            bb = size * 0.42;
+          el(
+            "path",
+            {
+              d:
+                "M " +
+                -bw +
+                "," +
+                bb +
+                " C " +
+                -bw +
+                "," +
+                bt +
+                " " +
+                bw +
+                "," +
+                bt +
+                " " +
+                bw +
+                "," +
+                bb +
+                " Z",
+              class: cls,
+            },
+            g,
+          );
+          if (filterUrl) {
+            g.setAttribute("filter", filterUrl);
+          }
+          return g;
+        }
+
+        // ---------- background accounts: all inside the threshold ----------
+        for (var i = 0; i < 210; i++) {
+          var ang = Math.random() * 360;
+          var rf = Math.sqrt(Math.random()) * 0.62; // risk score below 0.65
+          var q = polar(ang, rf);
+          addProfile(dotLayer, q.x, q.y, 14 + Math.random() * 4, "clear-dot");
+        }
+
+        // scale labels and the threshold label
+        [0.25, 0.5, 0.75].forEach(function (f) {
+          var t = el(
+            "text",
+            { class: "scale-label", x: CX + R * f - 8, y: CY - 8 },
+            labelLayer,
+          );
+          t.textContent = f.toFixed(2);
+        });
+        var tl = el(
+          "text",
+          { class: "threshold-label", x: CX, y: CY + rt - 26 },
+          labelLayer,
+        ); // bottom of the ring: clear of every account label
+        tl.textContent = "Decision threshold 0.65";
+
+        // ---------- flagged accounts: distance from center = risk score ----------
+        var flagged = [
+          {
+            id: "9061",
+            score: 0.94,
+            a: 14,
+            side: "R",
+            desc: "Structuring pattern: multiple transfers just below the $10k reporting threshold.",
+          },
+          {
+            id: "4471",
+            score: 0.91,
+            a: 76,
+            side: "L",
+            desc: "Repeated cross-border transfers sitting just under the reporting threshold.",
+          },
+          {
+            id: "1092",
+            score: 0.89,
+            a: 112,
+            side: "L",
+            desc: "New beneficiary added the same day as a large outbound transfer.",
+          },
+          {
+            id: "8830",
+            score: 0.86,
+            a: 160,
+            side: "L",
+            desc: "Device fingerprint changed twice within a single settlement cycle.",
+          },
+          {
+            id: "3345",
+            score: 0.83,
+            a: 346,
+            side: "L",
+            desc: "Velocity spike: 12 transfers in the last hour, all near the same amount.",
+          },
+          {
+            id: "7719",
+            score: 0.79,
+            a: 250,
+            side: "R",
+            desc: "Geo-mismatch: the login region does not match the payment corridor.",
+          },
+          {
+            id: "5502",
+            score: 0.73,
+            a: 304,
+            side: "R",
+            desc: "Linked to two other flagged accounts through a shared beneficiary.",
+          },
+        ];
+        flagged.sort(function (a, b) {
+          return b.score - a.score;
+        });
+
+        var infoBg = document.getElementById("infoBg");
+        var infoTitle = document.getElementById("infoTitle");
+        var infoTag = document.getElementById("infoTag");
+        var infoDesc = document.getElementById("infoDesc");
+
+        function setWrapped(textEl, str, maxW, lineH) {
+          while (textEl.firstChild) {
+            textEl.removeChild(textEl.firstChild);
+          }
+          var words = str.split(" "),
+            line = [];
+          var ts = el(
+            "tspan",
+            { x: textEl.getAttribute("x"), dy: "0" },
+            textEl,
+          );
+          words.forEach(function (w) {
+            line.push(w);
+            ts.textContent = line.join(" ");
+            if (ts.getComputedTextLength() > maxW && line.length > 1) {
+              line.pop();
+              ts.textContent = line.join(" ");
+              line = [w];
+              ts = el(
+                "tspan",
+                { x: textEl.getAttribute("x"), dy: String(lineH) },
+                textEl,
+              );
+              ts.textContent = w;
+            }
+          });
+        }
+        var DEFAULT = {
+          title: "Compliance Radar",
+          tag: "Distance from center = risk score",
+          desc: "Accounts inside the dashed ring are below the 0.65 decision threshold. Hover an amber account or a case to see why it breached it.",
+        };
+        function showInfo(d, lit) {
+          infoTitle.textContent = d.title;
+          infoTag.textContent = d.tag;
+          setWrapped(infoDesc, d.desc, 490, 31);
+          infoBg.classList.toggle("lit", !!lit);
+        }
+
+        var icons = {},
+          rows = {};
+        function setHot(id, on) {
+          var ic = icons[id];
+          if (ic) {
+            ic.g.setAttribute(
+              "transform",
+              ic.base + (on ? " scale(1.25)" : ""),
+            );
+          }
+          if (rows[id]) {
+            rows[id].classList.toggle("hot", on);
+          }
+        }
+        function enter(f) {
+          setHot(f.id, true);
+          showInfo(
+            {
+              title: "Account •• " + f.id,
+              tag: "Risk " + f.score.toFixed(2) + " ≥ 0.65 → compliance case",
+              desc: f.desc,
+            },
+            true,
+          );
+        }
+        function leave(f) {
+          setHot(f.id, false);
+          showInfo(DEFAULT, false);
+        }
+
+        flagged.forEach(function (f, idx) {
+          var p = polar(f.a, f.score);
+          var delay = ((f.a / 360) * SWEEP).toFixed(3);
+
+          // ping when the sweep crosses the account
+          var ring = el(
+            "circle",
+            { class: "flag-ring", cx: p.x, cy: p.y, r: "6" },
+            dotLayer,
+          );
+          el(
+            "animate",
+            {
+              attributeName: "r",
+              values: "6;78;6",
+              keyTimes: "0;0.09;1",
+              dur: SWEEP + "s",
+              begin: delay + "s",
+              repeatCount: "indefinite",
+            },
+            ring,
+          );
+          el(
+            "animate",
+            {
+              attributeName: "opacity",
+              values: "0.9;0;0",
+              keyTimes: "0;0.16;1",
+              dur: SWEEP + "s",
+              begin: delay + "s",
+              repeatCount: "indefinite",
+            },
+            ring,
+          );
+
+          var icon = addProfile(
+            dotLayer,
+            p.x,
+            p.y,
+            60,
+            "flag-dot",
+            "url(#glow)",
+          );
+          el(
+            "animate",
+            {
+              attributeName: "opacity",
+              values: "0.8;1;0.9;0.8",
+              keyTimes: "0;0.06;0.25;1",
+              dur: SWEEP + "s",
+              begin: delay + "s",
+              repeatCount: "indefinite",
+            },
+            icon,
+          );
+          icons[f.id] = { g: icon, base: "translate(" + p.x + "," + p.y + ")" };
+
+          // permanent label, always beside the icon
+          var lx = p.x + (f.side === "R" ? 42 : -42);
+          var anchor = f.side === "R" ? "start" : "end";
+          var t1 = el(
+            "text",
+            { class: "radar-label", x: lx, y: p.y - 1, "text-anchor": anchor },
+            labelLayer,
+          );
+          t1.textContent = "Acct: " + f.id;
+          var t2 = el(
+            "text",
+            { class: "radar-score", x: lx, y: p.y + 27, "text-anchor": anchor },
+            labelLayer,
+          );
+          t2.textContent = "Risk " + f.score.toFixed(2);
+
+          var hit = el(
+            "circle",
+            {
+              class: "hit",
+              cx: p.x,
+              cy: p.y,
+              r: "46",
+              style: "cursor:pointer",
+            },
+            dotLayer,
+          );
+          hit.addEventListener("mouseenter", function () {
+            enter(f);
+          });
+          hit.addEventListener("mouseleave", function () {
+            leave(f);
+          });
+
+          // case row (list is sorted by risk, highest first)
+          var ry = 182 + idx * 48;
+          var row = el(
+            "g",
+            {
+              class: "case",
+              tabindex: "0",
+              role: "button",
+              "aria-label": "Case for account " + f.id,
+            },
+            rowLayer,
+          );
+          var bg = el(
+            "rect",
+            { class: "row-bg", x: 842, y: ry, width: 516, height: 40, rx: 11 },
+            row,
+          );
+          el(
+            "animate",
+            {
+              attributeName: "fill-opacity",
+              values: "0.42;0.06;0.06",
+              keyTimes: "0;0.3;1",
+              dur: SWEEP + "s",
+              begin: delay + "s",
+              repeatCount: "indefinite",
+            },
+            bg,
+          );
+          addProfile(row, 874, ry + 22, 28, "row-icon");
+          var rid = el("text", { class: "row-id", x: 908, y: ry + 29 }, row);
+          rid.textContent = "Acct: " + f.id;
+          var rsc = el(
+            "text",
+            { class: "row-score", x: 1336, y: ry + 29 },
+            row,
+          );
+          rsc.textContent = f.score.toFixed(2);
+          el(
+            "rect",
+            { class: "hit", x: 842, y: ry, width: 516, height: 40 },
+            row,
+          );
+          rows[f.id] = row;
+          row.addEventListener("mouseenter", function () {
+            enter(f);
+          });
+          row.addEventListener("mouseleave", function () {
+            leave(f);
+          });
+          row.addEventListener("focus", function () {
+            enter(f);
+          });
+          row.addEventListener("blur", function () {
+            leave(f);
+          });
+        });
+
+        // ---------- cases flowing from the fusion engine into the list ----------
+        var fp = document.getElementById("flowParticles");
+        for (var j = 0; j < 4; j++) {
+          var c = el("circle", { class: "flow-particle", r: "6.5" }, fp);
+          var an = el(
+            "animateMotion",
+            {
+              dur: "1.2s",
+              repeatCount: "indefinite",
+              begin: (-j * 0.3).toFixed(2) + "s",
+            },
+            c,
+          );
+          var mp = document.createElementNS(svgns, "mpath");
+          mp.setAttributeNS(
+            "http://www.w3.org/1999/xlink",
+            "href",
+            "#flowPath",
+          );
+          an.appendChild(mp);
+        }
+
+        showInfo(DEFAULT, false);
+
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          if (typeof svg.pauseAnimations === "function") svg.pauseAnimations();
+        }
+      })();
+    </script>
+  </body>
+</html>

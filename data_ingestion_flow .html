@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ingestion &amp; Preprocessing — Live Flow</title>
+    <style>
+      :root {
+        --bg-0: #050b14;
+        --bg-1: #0a1420;
+        --panel: #101c2e;
+        --panel-border: #2a3e5c;
+        --cyan: #22d3ee;
+        --blue: #3b82f6;
+        --amber: #f5b942;
+        --text-primary: #f4f8fc;
+        --text-dim: #b4c3d8;
+        --text-muted: #7f92ad;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: radial-gradient(
+          ellipse at 50% 35%,
+          var(--bg-1) 0%,
+          var(--bg-0) 68%
+        );
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        min-height: 700px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .grid-overlay {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(
+          ellipse at 50% 50%,
+          black 12%,
+          transparent 75%
+        );
+        pointer-events: none;
+      }
+
+      .header {
+        position: relative;
+        padding: 24px 30px 0 30px;
+        line-height: 1.25;
+        pointer-events: none;
+      }
+      .header .eyebrow {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: 0.2px;
+      }
+      .header .throughput {
+        font-family:
+          "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 46px;
+        font-weight: 700;
+        color: var(--cyan);
+        margin-top: 6px;
+      }
+      .header .throughput span {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-dim);
+        font-size: 22px;
+        font-weight: 600;
+        margin-left: 12px;
+      }
+      .header .phase {
+        font-size: 19px;
+        font-weight: 600;
+        color: var(--amber);
+        margin-top: 6px;
+      }
+
+      .flow {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px 0 12px;
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+        max-width: 1760px;
+      }
+
+      .info-panel {
+        position: relative;
+        align-self: flex-end;
+        width: min(900px, calc(100% - 52px));
+        margin: 0 26px 22px 26px;
+        background: rgba(16, 28, 46, 0.9);
+        border: 1.5px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 18px 22px 20px 22px;
+        min-height: 190px; /* fixed footprint so the diagram never rescales when hover text changes length */
+        backdrop-filter: blur(6px);
+        transition: border-color 0.25s ease;
+      }
+      .info-panel.lit {
+        border-color: rgba(245, 185, 66, 0.7);
+      }
+      .info-panel .title {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+      }
+      .info-panel .rate {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--amber);
+        margin-bottom: 10px;
+      }
+      .info-panel .desc {
+        font-size: 19px;
+        line-height: 1.5;
+        color: var(--text-dim);
+      }
+
+      /* conduits + tag stems */
+      .conduit {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 4;
+        stroke-opacity: 0.95;
+        transition:
+          stroke 0.25s ease,
+          stroke-width 0.25s ease;
+      }
+      .stem {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 2.5;
+        stroke-dasharray: 6 6;
+        transition: stroke 0.25s ease;
+      }
+      [data-stream].active .conduit {
+        stroke: var(--amber);
+        stroke-width: 5;
+      }
+      [data-stream].active .stem {
+        stroke: var(--amber);
+      }
+
+      .particle {
+        fill: var(--cyan);
+        transition: fill 0.2s ease;
+      }
+      [data-stream].active .particle {
+        fill: var(--amber);
+      }
+
+      .ping {
+        fill: none;
+        stroke: var(--cyan);
+        stroke-width: 2.4;
+      }
+
+      /* nodes */
+      .node {
+        cursor: pointer;
+      }
+      .node-panel {
+        fill: var(--panel);
+        stroke: var(--panel-border);
+        stroke-width: 4;
+        transition:
+          stroke 0.2s ease,
+          fill 0.2s ease;
+      }
+      .node.primary .node-panel {
+        stroke: var(--cyan);
+      }
+      .node.next .node-panel {
+        stroke: var(--cyan);
+        stroke-dasharray: 13 9;
+      }
+      .node.hot .node-panel {
+        stroke: var(--amber);
+        fill: #16263f;
+        stroke-dasharray: none;
+      }
+      .node:focus {
+        outline: none;
+      }
+      .node:focus-visible .node-panel {
+        stroke: var(--amber);
+        stroke-width: 5.5;
+      }
+      .node-icon {
+        stroke: var(--text-primary);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .node-hit {
+        fill: transparent;
+      }
+
+      .node-label {
+        font-size: 40px;
+        font-weight: 800;
+        fill: var(--text-primary);
+        text-anchor: middle;
+        letter-spacing: 0.2px;
+      }
+      .node-sub {
+        font-size: 26px;
+        font-weight: 700;
+        fill: var(--amber);
+        text-anchor: middle;
+      }
+
+      .pill-text {
+        font-size: 25px;
+        font-weight: 800;
+        fill: var(--cyan);
+        text-anchor: middle;
+      }
+      .pill-text.dim {
+        fill: var(--text-dim);
+      }
+
+      @media (max-width: 760px) {
+        .header .throughput {
+          font-size: 34px;
+        }
+        .info-panel .desc {
+          font-size: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="grid-overlay"></div>
+
+      <div class="header">
+        <div class="eyebrow">Enterprise AML Detection Engine</div>
+        <div class="throughput">
+          1,000,000+ <span>Transactions Ingested</span>
+        </div>
+        <div class="phase">
+          Ingestion &amp; Preprocessing · DataManager → Anomaly Extractor →
+          Graph Analyzer
+        </div>
+      </div>
+
+      <div class="flow">
+        <svg
+          viewBox="0 0 1380 520"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="Animated pipeline: Local Storage loads and saves through the DataManager into DataFrames, then flows through the Anomaly Extractor, which scores the data and passes Enriched DataFrames to the Graph Analyzer."
+        >
+          <defs>
+            <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="3.8" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="nodeGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="7" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- conduits and tag stems (beneath everything) -->
+          <g id="conduits">
+            <g data-stream="read">
+              <path id="c-read" class="conduit" d="M150,201 L500,201" />
+              <path class="stem" d="M325,74 L325,194" />
+            </g>
+            <g data-stream="write">
+              <path id="c-write" class="conduit" d="M500,229 L150,229" />
+            </g>
+            <g data-stream="df">
+              <path id="c-df" class="conduit" d="M500,215 L870,215" />
+              <path class="stem" d="M685,74 L685,215" />
+            </g>
+            <g data-stream="out">
+              <path id="c-out" class="conduit" d="M870,215 L1225,215" />
+              <path class="stem" d="M1047,74 L1047,215" />
+            </g>
+          </g>
+
+          <!-- radar pings from the two stages -->
+          <g opacity="0.55" filter="url(#glow)">
+            <circle class="ping" cx="500" cy="215" r="120">
+              <animate
+                attributeName="r"
+                values="120;190"
+                dur="3s"
+                begin="0s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="0s"
+                repeatCount="indefinite"
+              />
+            </circle>
+            <circle class="ping" cx="500" cy="215" r="120">
+              <animate
+                attributeName="r"
+                values="120;190"
+                dur="3s"
+                begin="1.5s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="1.5s"
+                repeatCount="indefinite"
+              />
+            </circle>
+            <circle class="ping" cx="870" cy="215" r="120">
+              <animate
+                attributeName="r"
+                values="120;190"
+                dur="3s"
+                begin="0.75s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="0.75s"
+                repeatCount="indefinite"
+              />
+            </circle>
+            <circle class="ping" cx="870" cy="215" r="120">
+              <animate
+                attributeName="r"
+                values="120;190"
+                dur="3s"
+                begin="2.25s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0"
+                dur="3s"
+                begin="2.25s"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </g>
+
+          <!-- particles (filled by script) -->
+          <g id="particles" filter="url(#glow)"></g>
+
+          <!-- nodes and tags -->
+          <g id="nodes">
+            <!-- Local Storage -->
+            <g
+              class="node"
+              data-id="storage"
+              tabindex="0"
+              role="button"
+              aria-label="Local Storage"
+              transform="translate(150,215)"
+            >
+              <circle class="node-panel" r="120" />
+              <g
+                class="node-icon"
+                fill="none"
+                stroke-width="1.05"
+                transform="translate(0,-3) scale(4.8)"
+              >
+                <path d="M-13,-3 L-9,-12 H9 L13,-3" />
+                <rect x="-13" y="-3" width="26" height="15" rx="3" />
+                <line x1="-8" y1="4.5" x2="2" y2="4.5" />
+                <circle
+                  cx="8"
+                  cy="4.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+              </g>
+              <text class="node-label" y="172">Local</text>
+              <text class="node-label" y="218">Storage</text>
+              <circle class="node-hit" r="132" />
+              <rect class="node-hit" x="-110" y="134" width="220" height="96" />
+            </g>
+
+            <!-- Stage 1: DataManager -->
+            <g
+              class="node primary"
+              data-id="stage1"
+              tabindex="0"
+              role="button"
+              aria-label="Stage 1 DataManager"
+              transform="translate(500,215)"
+            >
+              <circle class="node-panel" r="120" filter="url(#nodeGlow)" />
+              <g
+                class="node-icon"
+                fill="none"
+                stroke-width="1.05"
+                transform="translate(0,3) scale(5)"
+              >
+                <ellipse cx="0" cy="-10" rx="12" ry="4" />
+                <path d="M-12,-10 V8" />
+                <path d="M12,-10 V8" />
+                <path d="M-12,8 A12,4 0 0,0 12,8" />
+                <path d="M-12,-1 Q0,3 12,-1" stroke="var(--cyan)" />
+              </g>
+              <text class="node-label" y="172">Stage 1:</text>
+              <text class="node-label" y="218">DataManager</text>
+              <text class="node-sub" y="258">Extracting, Cleaning</text>
+              <text class="node-sub" y="290">&amp; Encoding</text>
+              <circle class="node-hit" r="132" />
+              <rect
+                class="node-hit"
+                x="-160"
+                y="134"
+                width="320"
+                height="170"
+              />
+            </g>
+
+            <!-- Stage 2: Anomaly Extractor -->
+            <g
+              class="node primary"
+              data-id="stage2"
+              tabindex="0"
+              role="button"
+              aria-label="Stage 2 Anomaly Extractor"
+              transform="translate(870,215)"
+            >
+              <circle class="node-panel" r="120" filter="url(#nodeGlow)" />
+              <!-- outlier detection: a dense cluster inside a density boundary, with isolated points flagged in amber -->
+              <g
+                class="node-icon"
+                fill="none"
+                stroke-width="1.0"
+                transform="scale(4.8)"
+              >
+                <ellipse
+                  cx="-3.5"
+                  cy="3"
+                  rx="10"
+                  ry="7.5"
+                  stroke-dasharray="2.4 2"
+                  stroke="var(--cyan)"
+                  stroke-width="0.8"
+                />
+                <circle
+                  cx="-8"
+                  cy="3"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="-5.5"
+                  cy="-0.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="-2"
+                  cy="2"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="-6"
+                  cy="6.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="1"
+                  cy="5.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="-3.5"
+                  cy="4.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="2"
+                  cy="1.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="-1"
+                  cy="7.5"
+                  r="1.5"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle
+                  cx="11.5"
+                  cy="-9"
+                  r="2.4"
+                  fill="var(--amber)"
+                  stroke="none"
+                >
+                  <animate
+                    attributeName="r"
+                    values="2.4;3.4;2.4"
+                    dur="1.6s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle
+                  cx="12"
+                  cy="10.5"
+                  r="2.4"
+                  fill="var(--amber)"
+                  stroke="none"
+                >
+                  <animate
+                    attributeName="r"
+                    values="2.4;3.4;2.4"
+                    dur="1.6s"
+                    begin="0.8s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              </g>
+              <text class="node-label" y="172">Stage 2:</text>
+              <text class="node-label" y="218">Anomaly Extractor</text>
+              <text class="node-sub" y="258">Unsupervised</text>
+              <text class="node-sub" y="290">Isolation Scoring</text>
+              <circle class="node-hit" r="132" />
+              <rect
+                class="node-hit"
+                x="-210"
+                y="134"
+                width="420"
+                height="170"
+              />
+            </g>
+
+            <!-- Graph Analyzer (next step) -->
+            <g
+              class="node next"
+              data-id="graph"
+              tabindex="0"
+              role="button"
+              aria-label="Graph Analyzer, next step"
+              transform="translate(1225,215)"
+            >
+              <circle class="node-panel" r="120" />
+              <g
+                class="node-icon"
+                fill="none"
+                stroke-width="1.3"
+                transform="translate(0,-4) scale(4.7)"
+              >
+                <line x1="-10" y1="-8" x2="9" y2="-3" />
+                <line x1="-10" y1="-8" x2="-6" y2="10" />
+                <line x1="9" y1="-3" x2="-6" y2="10" />
+                <line x1="9" y1="-3" x2="10" y2="9" />
+                <line x1="-6" y1="10" x2="10" y2="9" />
+                <circle
+                  cx="-10"
+                  cy="-8"
+                  r="3"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle cx="9" cy="-3" r="3" fill="var(--cyan)" stroke="none" />
+                <circle
+                  cx="-6"
+                  cy="10"
+                  r="3"
+                  fill="var(--cyan)"
+                  stroke="none"
+                />
+                <circle cx="10" cy="9" r="3" fill="var(--cyan)" stroke="none" />
+              </g>
+              <text class="node-label" y="172">Graph</text>
+              <text class="node-label" y="218">Analyzer</text>
+              <text class="node-sub" y="258">Feature Extraction</text>
+              <circle class="node-hit" r="132" />
+              <rect
+                class="node-hit"
+                x="-150"
+                y="134"
+                width="300"
+                height="140"
+              />
+            </g>
+
+            <!-- Intermediary tags, one per connector -->
+            <g
+              class="node pill"
+              data-id="loadsave"
+              tabindex="0"
+              role="button"
+              aria-label="Load and Save"
+              transform="translate(325,46)"
+            >
+              <rect
+                class="node-panel"
+                x="-102"
+                y="-28"
+                width="204"
+                height="56"
+                rx="28"
+              />
+              <text class="pill-text dim" y="9">Load / Save</text>
+              <rect class="node-hit" x="-112" y="-36" width="224" height="72" />
+            </g>
+            <g
+              class="node pill"
+              data-id="dataframes"
+              tabindex="0"
+              role="button"
+              aria-label="DataFrames hand-off"
+              transform="translate(685,46)"
+            >
+              <rect
+                class="node-panel"
+                x="-104"
+                y="-28"
+                width="208"
+                height="56"
+                rx="28"
+              />
+              <text class="pill-text" y="9">DataFrames</text>
+              <rect class="node-hit" x="-114" y="-36" width="228" height="72" />
+            </g>
+            <g
+              class="node pill"
+              data-id="enriched"
+              tabindex="0"
+              role="button"
+              aria-label="Enriched DataFrames hand-off"
+              transform="translate(1047,46)"
+            >
+              <rect
+                class="node-panel"
+                x="-156"
+                y="-28"
+                width="312"
+                height="56"
+                rx="28"
+              />
+              <text class="pill-text" y="9">Enriched DataFrames</text>
+              <rect class="node-hit" x="-166" y="-36" width="332" height="72" />
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="info-panel" id="infoPanel">
+        <div class="title" id="infoTitle">
+          Ingestion &amp; Preprocessing Phase
+        </div>
+        <div class="rate" id="infoRate">
+          DataManager → Anomaly Extractor → Graph Analyzer
+        </div>
+        <div class="desc" id="infoDesc">
+          Hover or focus any node to see how raw records become anomaly-scored
+          data ready for graph feature extraction.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var svgns = "http://www.w3.org/2000/svg";
+        var svg = document.querySelector("svg");
+        var particleLayer = document.getElementById("particles");
+
+        var DEFAULT_TITLE = "Ingestion & Preprocessing Phase";
+        var DEFAULT_TAG = "DataManager → Anomaly Extractor → Graph Analyzer";
+        var DEFAULT_DESC =
+          "Hover or focus any node to see how raw records become anomaly-scored data ready for graph feature extraction.";
+
+        var nodeData = {
+          storage: {
+            title: "Local Storage",
+            tag: "Persistence layer",
+            desc: "Raw transaction and account records are loaded from, and saved back to, local storage by the DataManager.",
+          },
+          loadsave: {
+            title: "Load / Save",
+            tag: "Read & write",
+            desc: "The DataManager loads raw records from local storage and saves processed data back to it.",
+          },
+          stage1: {
+            title: "Stage 1: DataManager",
+            tag: "Extracting, Cleaning & Encoding",
+            desc: "Extracts raw transaction and account records from local storage, cleans them, and encodes them into structured DataFrames for pipeline processing.",
+          },
+          dataframes: {
+            title: "DataFrames",
+            tag: "Normalized hand-off",
+            desc: "Clean, encoded DataFrames are the single hand-off between the DataManager and the Anomaly Extractor.",
+          },
+          stage2: {
+            title: "Stage 2: Anomaly Extractor",
+            tag: "Unsupervised Isolation Scoring",
+            desc: "Scores every record for how isolated it is from normal activity, without labels, across the Train, CV, and Test splits. Training reference data is used throughout to prevent data leakage.",
+          },
+          enriched: {
+            title: "Enriched DataFrames",
+            tag: "Scored hand-off",
+            desc: "DataFrames that now carry their anomaly scores are handed straight to the Graph Analyzer.",
+          },
+          graph: {
+            title: "Graph Analyzer",
+            tag: "Feature Extraction",
+            desc: "The next step. It takes the enriched, anomaly-scored data from the Anomaly Extractor and extracts graph features from it.",
+          },
+        };
+
+        // which conduits light up for each node
+        var links = {
+          storage: ["read", "write"],
+          loadsave: ["read", "write"],
+          stage1: ["read", "write", "df"],
+          dataframes: ["df"],
+          stage2: ["df", "out"],
+          enriched: ["out"],
+          graph: ["out"],
+        };
+
+        // particle streams: id, path id, count, base duration (s)
+        var streams = [
+          { id: "read", path: "c-read", count: 3, dur: 2.4 },
+          { id: "write", path: "c-write", count: 3, dur: 2.6 },
+          { id: "df", path: "c-df", count: 6, dur: 3.0 },
+          { id: "out", path: "c-out", count: 6, dur: 2.8 },
+        ];
+
+        streams.forEach(function (s) {
+          var group = document.querySelector(
+            '#conduits [data-stream="' + s.id + '"]',
+          );
+          var layer = document.createElementNS(svgns, "g");
+          layer.setAttribute("data-stream", s.id);
+          for (var i = 0; i < s.count; i++) {
+            var circle = document.createElementNS(svgns, "circle");
+            circle.setAttribute("r", "7");
+            circle.setAttribute("class", "particle");
+
+            var anim = document.createElementNS(svgns, "animateMotion");
+            anim.setAttribute(
+              "dur",
+              (s.dur + Math.random() * 0.4).toFixed(2) + "s",
+            );
+            anim.setAttribute("repeatCount", "indefinite");
+            anim.setAttribute(
+              "begin",
+              (-i * (s.dur / s.count)).toFixed(2) + "s",
+            ); // negative: streams are mid-flight from frame one
+
+            var mpath = document.createElementNS(svgns, "mpath");
+            mpath.setAttributeNS(
+              "http://www.w3.org/1999/xlink",
+              "href",
+              "#" + s.path,
+            );
+            anim.appendChild(mpath);
+            circle.appendChild(anim);
+            layer.appendChild(circle);
+          }
+          particleLayer.appendChild(layer);
+        });
+
+        var infoPanel = document.getElementById("infoPanel");
+        var infoTitle = document.getElementById("infoTitle");
+        var infoRate = document.getElementById("infoRate");
+        var infoDesc = document.getElementById("infoDesc");
+
+        function setActive(id) {
+          var lit = links[id] || [];
+          document.querySelectorAll("[data-stream]").forEach(function (el) {
+            el.classList.toggle(
+              "active",
+              lit.indexOf(el.getAttribute("data-stream")) > -1,
+            );
+          });
+          document.querySelectorAll(".node").forEach(function (n) {
+            n.classList.toggle("hot", n.getAttribute("data-id") === id);
+          });
+          var d = nodeData[id];
+          if (d) {
+            infoTitle.textContent = d.title;
+            infoRate.textContent = d.tag;
+            infoDesc.textContent = d.desc;
+            infoPanel.classList.add("lit");
+          }
+        }
+        function clearActive() {
+          document.querySelectorAll("[data-stream]").forEach(function (el) {
+            el.classList.remove("active");
+          });
+          document.querySelectorAll(".node").forEach(function (n) {
+            n.classList.remove("hot");
+          });
+          infoTitle.textContent = DEFAULT_TITLE;
+          infoRate.textContent = DEFAULT_TAG;
+          infoDesc.textContent = DEFAULT_DESC;
+          infoPanel.classList.remove("lit");
+        }
+
+        document.querySelectorAll(".node").forEach(function (node) {
+          var id = node.getAttribute("data-id");
+          node.addEventListener("mouseenter", function () {
+            setActive(id);
+          });
+          node.addEventListener("mouseleave", clearActive);
+          node.addEventListener("focus", function () {
+            setActive(id);
+          });
+          node.addEventListener("blur", clearActive);
+        });
+
+        // respect reduced-motion preference
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          if (typeof svg.pauseAnimations === "function") svg.pauseAnimations();
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -2,20 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>XGBoost — Tabular Engine</title>
+    <title>XGBoost — Core Model Driver</title>
     <style>
       :root {
         --bg-0: #050b14;
         --bg-1: #0a1420;
         --panel: #101c2e;
-        --panel-border: #1e2d45;
+        --panel-border: #2a3e5c;
         --cyan: #22d3ee;
         --blue: #3b82f6;
-        --blue-dark: #0f2038;
-        --blue-light: #9dc4ff;
+        --blue-dark: #10233f;
+        --blue-light: #a9cdff;
         --amber: #f5b942;
-        --text-primary: #e6edf5;
-        --text-muted: #6b7d99;
+        --text-primary: #f4f8fc;
+        --text-dim: #b4c3d8;
+        --text-muted: #7f92ad;
       }
       * {
         box-sizing: border-box;
@@ -27,9 +28,9 @@
         height: 100%;
         width: 100%;
         background: radial-gradient(
-          ellipse at 50% 18%,
+          ellipse at 50% 30%,
           var(--bg-1) 0%,
-          var(--bg-0) 65%
+          var(--bg-0) 68%
         );
         font-family:
           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -40,119 +41,226 @@
         position: relative;
         width: 100%;
         height: 100vh;
-        min-height: 520px;
+        min-height: 720px;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        flex-direction: column;
       }
       .grid-overlay {
         position: absolute;
         inset: 0;
         background-image:
-          linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(34, 211, 238, 0.045) 1px, transparent 1px);
-        background-size: 36px 36px;
+          linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
         mask-image: radial-gradient(
-          ellipse at 50% 38%,
-          black 10%,
-          transparent 72%
+          ellipse at 50% 45%,
+          black 12%,
+          transparent 75%
         );
         pointer-events: none;
       }
+
       .header {
-        position: absolute;
-        top: 22px;
-        left: 26px;
-        line-height: 1.3;
+        position: relative;
+        padding: 22px 30px 0 30px;
+        line-height: 1.25;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 14px 28px;
+        flex-wrap: wrap;
         pointer-events: none;
       }
       .header .eyebrow {
-        font-size: 12.5px;
-        color: var(--text-muted);
-        font-weight: 500;
-      }
-      .header .throughput {
-        font-family:
-          "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
-        font-size: 20px;
-        color: var(--cyan);
-        font-variant-numeric: tabular-nums;
-        margin-top: 2px;
-      }
-      .header .throughput span {
-        color: var(--text-muted);
-        font-size: 13px;
-        margin-left: 6px;
-      }
-      .info-panel {
-        position: absolute;
-        bottom: 22px;
-        right: 26px;
-        width: min(300px, 40vw);
-        background: rgba(16, 28, 46, 0.82);
-        border: 1px solid var(--panel-border);
-        border-radius: 10px;
-        padding: 14px 16px;
-        backdrop-filter: blur(6px);
-        transition: border-color 0.25s ease;
-      }
-      .info-panel.lit {
-        border-color: rgba(245, 185, 66, 0.55);
-      }
-      .info-panel .title {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 28px;
+        font-weight: 800;
         color: var(--text-primary);
-        margin-bottom: 4px;
+        letter-spacing: 0.2px;
       }
-      .info-panel .rate {
-        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
-        font-size: 13px;
+      .header .phase {
+        font-size: 19px;
+        font-weight: 600;
         color: var(--amber);
-        margin-bottom: 6px;
+        margin-top: 6px;
       }
-      .info-panel .desc {
-        font-size: 12.5px;
-        line-height: 1.5;
-        color: var(--text-muted);
+
+      .badge {
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        background: rgba(16, 28, 46, 0.92);
+        border: 1.5px solid rgba(34, 211, 238, 0.5);
+        border-radius: 999px;
+        padding: 13px 26px 13px 22px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-dim);
+      }
+      .badge b {
+        color: var(--cyan);
+        font-weight: 800;
+      }
+      .badge b.mono {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+      }
+      .badge .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 14px;
+        background: var(--amber);
+        box-shadow: 0 0 10px var(--amber);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      .badge .div {
+        width: 1.5px;
+        height: 26px;
+        background: var(--panel-border);
+        margin: 0 18px;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .badge .dot {
+          animation: none;
+        }
+      }
+
+      .flow {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 12px 0 12px;
       }
       svg {
         width: 100%;
         height: 100%;
-        max-width: 1300px;
+        max-width: 1900px;
       }
+
+      .info-panel {
+        position: relative;
+        align-self: flex-end;
+        width: min(900px, calc(100% - 52px));
+        margin: 0 26px 14px 26px;
+        min-height: 136px;
+        background: rgba(16, 28, 46, 0.9);
+        border: 1.5px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 12px 22px 14px 22px;
+        backdrop-filter: blur(6px);
+        transition: border-color 0.25s ease;
+      }
+      .info-panel.lit {
+        border-color: rgba(245, 185, 66, 0.7);
+      }
+      .info-panel .title {
+        font-size: 25px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 3px;
+      }
+      .info-panel .rate {
+        font-size: 19px;
+        font-weight: 700;
+        color: var(--amber);
+        margin-bottom: 5px;
+      }
+      .info-panel .desc {
+        font-size: 18px;
+        line-height: 1.4;
+        color: var(--text-dim);
+      }
+
+      /* edges / streams */
       .edge {
         fill: none;
         stroke: var(--panel-border);
-        stroke-width: 1.2;
-        stroke-opacity: 0.85;
+        stroke-width: 3;
+        stroke-opacity: 0.95;
+        transition: stroke 0.25s ease;
       }
-      .split-label {
-        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
-        font-size: 13px;
-        fill: var(--cyan);
-        text-anchor: middle;
-        letter-spacing: 0.3px;
+      .feed {
+        fill: none;
+        stroke: var(--panel-border);
+        stroke-width: 3;
+        stroke-opacity: 0.9;
       }
       .particle {
         fill: var(--cyan);
       }
+      .particle.amber {
+        fill: var(--amber);
+      }
+
+      .chip {
+        fill: var(--panel);
+        stroke: var(--cyan);
+        stroke-width: 3;
+        transition:
+          fill 0.2s ease,
+          stroke 0.2s ease;
+      }
+      .chip.amber {
+        stroke: var(--amber);
+      }
+      .chip-text {
+        font-size: 25px;
+        font-weight: 800;
+        fill: var(--text-primary);
+        text-anchor: middle;
+      }
+      .fusion {
+        fill: rgba(16, 28, 46, 0.95);
+        stroke: var(--amber);
+        stroke-width: 3.5;
+      }
+      .fusion-text {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 33px;
+        font-weight: 800;
+        fill: var(--amber);
+        text-anchor: middle;
+      }
+
       .decision {
         fill: var(--panel);
         stroke: var(--cyan);
-        stroke-width: 1.8;
-        cursor: pointer;
-        transition: stroke 0.2s ease;
+        stroke-width: 3.5;
+        transition:
+          stroke 0.2s ease,
+          fill 0.2s ease;
       }
-      .decision.hover-lit {
-        stroke: var(--amber);
+      .split-label {
+        font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+        font-size: 24px;
+        font-weight: 800;
+        fill: var(--cyan);
+        text-anchor: middle;
+        paint-order: stroke;
+        stroke: #050b14;
+        stroke-width: 9px;
+        stroke-linejoin: round;
       }
+      .split-label.start {
+        text-anchor: start;
+      }
+
       .leaf-box {
-        stroke-width: 1.4;
-        cursor: pointer;
+        stroke-width: 3;
       }
       .leaf-box.flagged {
-        fill: rgba(245, 185, 66, 0.22);
+        fill: rgba(245, 185, 66, 0.24);
         stroke: var(--amber);
       }
       .leaf-box.clear {
@@ -160,9 +268,9 @@
         stroke: var(--blue);
       }
       .leaf-text {
-        font-size: 12px;
+        font-size: 29px;
         text-anchor: middle;
-        font-weight: 700;
+        font-weight: 800;
       }
       .leaf-text.flagged {
         fill: var(--amber);
@@ -170,9 +278,62 @@
       .leaf-text.clear {
         fill: var(--blue-light);
       }
-      .hit {
-        fill: transparent;
+      .leaf-sub {
+        font-size: 20px;
+        text-anchor: middle;
+        font-weight: 700;
+        fill: var(--text-dim);
+      }
+
+      .legend-text {
+        font-size: 26px;
+        font-weight: 800;
+        fill: var(--text-primary);
+      }
+      .legend-text.dim {
+        fill: var(--text-dim);
+      }
+
+      .node {
         cursor: pointer;
+      }
+      .node:focus {
+        outline: none;
+      }
+      .node.hot .decision {
+        stroke: var(--amber);
+        fill: #1a2a44;
+      }
+      .node.hot .chip {
+        stroke: var(--amber);
+        fill: #16263f;
+      }
+      .node.hot .leaf-box {
+        stroke-width: 4.5;
+      }
+      .node:focus-visible .decision,
+      .node:focus-visible .chip,
+      .node:focus-visible .leaf-box {
+        stroke: var(--amber);
+      }
+      .node-hit {
+        fill: transparent;
+      }
+      [data-stream].active .edge,
+      [data-stream].active .feed {
+        stroke: var(--amber);
+      }
+
+      @media (max-width: 760px) {
+        .header .eyebrow {
+          font-size: 22px;
+        }
+        .badge {
+          font-size: 16px;
+        }
+        .info-panel .desc {
+          font-size: 16px;
+        }
       }
     </style>
   </head>
@@ -181,360 +342,689 @@
       <div class="grid-overlay"></div>
 
       <div class="header">
-        <div class="eyebrow">Stage 3A · XGBoost Tabular Engine</div>
-        <div class="throughput" id="throughput">
-          0 <span>transactions scored</span>
+        <div>
+          <div class="eyebrow">XGBoost · Core Model Driver</div>
+          <div class="phase">Gradient-boosted decision ensemble</div>
         </div>
+        <div
+          class="badge"
+          role="status"
+          aria-label="Trains on X_train_final and validates at a 0.65 probability threshold"
+        >
+          <span class="dot"></span>
+          <span>Trains on <b class="mono">X_train_final</b></span
+          ><span class="div"></span>
+          <span>Validated at <b>0.65</b> threshold</span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <svg
+          viewBox="0 0 1500 780"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="Four feature groups fuse into X_train_final, which trains a gradient-boosted decision tree whose leaves are Flagged at probability 0.65 or above and Clear below it."
+        >
+          <defs>
+            <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="3.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g id="edgeLayer"></g>
+          <g id="particleLayer" filter="url(#glow)"></g>
+          <g id="treeLayer"></g>
+          <g id="inputLayer"></g>
+          <g id="legendLayer"></g>
+        </svg>
       </div>
 
       <div class="info-panel" id="infoPanel">
-        <div class="title" id="infoTitle">Tabular Decision Ensemble</div>
-        <div class="rate" id="infoRate">Gradient-boosted feature splits</div>
+        <div class="title" id="infoTitle">
+          Gradient-Boosted Decision Ensemble
+        </div>
+        <div class="rate" id="infoRate">
+          Fits on X_train_final · validated at the 0.65 threshold
+        </div>
         <div class="desc" id="infoDesc">
-          Hover a leaf to see how that path scored, or a split to see the
-          feature it tested.
+          Hover an input, a split or a leaf to see how fused features become a
+          flagged or clear decision.
         </div>
       </div>
-
-      <svg
-        viewBox="0 0 1500 760"
-        preserveAspectRatio="xMidYMid meet"
-        role="img"
-        aria-label="Large-scale animated decision tree cascading transaction features down into flagged and clear leaf nodes"
-      >
-        <defs>
-          <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
-            <feGaussianBlur stdDeviation="2.8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <g id="edgeLayer"></g>
-        <g id="particleLayer" filter="url(#glow)"></g>
-        <g id="splitLabelLayer" filter="url(#glow)"></g>
-        <g id="decisionLayer"></g>
-        <g id="leafLayer"></g>
-      </svg>
     </div>
 
     <script>
       (function () {
         var svgns = "http://www.w3.org/2000/svg";
+        var svg = document.querySelector("svg");
         var edgeLayer = document.getElementById("edgeLayer");
         var particleLayer = document.getElementById("particleLayer");
-        var splitLabelLayer = document.getElementById("splitLabelLayer");
-        var decisionLayer = document.getElementById("decisionLayer");
-        var leafLayer = document.getElementById("leafLayer");
+        var treeLayer = document.getElementById("treeLayer");
+        var inputLayer = document.getElementById("inputLayer");
+        var legendLayer = document.getElementById("legendLayer");
 
-        // 5-level binary tree, scaled up spacing: root, L1(2), L2(4), L3(8), leaves(16)
-        var rootX = 750;
-        var spreads = [320, 170, 90, 48];
-        var ys = [70, 220, 370, 520, 680];
-        var xLevels = [[rootX]];
-        spreads.forEach(function (spread, d) {
-          var next = [];
-          xLevels[d].forEach(function (x) {
-            next.push(x - spread, x + spread);
-          });
-          xLevels.push(next);
+        function el(name, attrs, parent) {
+          var e = document.createElementNS(svgns, name);
+          for (var k in attrs) {
+            e.setAttribute(k, attrs[k]);
+          }
+          if (parent) parent.appendChild(e);
+          return e;
+        }
+
+        // ---------- geometry ----------
+        var ROOT_X = 750;
+        var YS = { bar: 140, root: 245, l1: 375, l2: 505, leaf: 645 };
+        var LEAF_W = 156,
+          LEAF_H = 84,
+          LEAF_GAP = 176;
+        var leafX = [];
+        for (var k = 0; k < 8; k++) {
+          leafX.push(ROOT_X + (k - 3.5) * LEAF_GAP);
+        }
+        var l2X = [0, 1, 2, 3].map(function (j) {
+          return (leafX[2 * j] + leafX[2 * j + 1]) / 2;
+        });
+        var l1X = [0, 1].map(function (j) {
+          return (l2X[2 * j] + l2X[2 * j + 1]) / 2;
         });
 
-        var splitLabels = {
-          "0-0-0": "amount > $8,400",
-          "0-0-1": "velocity_1h > 5",
-          "1-0-0": "cross_border = true",
-          "1-0-1": "new_beneficiary",
-          "1-1-2": "device_change",
-          "1-1-3": "geo_mismatch",
+        // ---------- content ----------
+        var splits = {
+          root: {
+            x: ROOT_X,
+            y: YS.root,
+            size: 40,
+            label: "amount > $8,400",
+            side: "right",
+            title: "Split: amount > $8,400",
+            tag: "Tabular feature",
+            desc: "The first test in the tree. High-value transactions go down the left branch; everything else goes right.",
+          },
+          l1a: {
+            x: l1X[0],
+            y: YS.l1,
+            size: 33,
+            label: "velocity_1h > 5",
+            side: "top",
+            title: "Split: velocity_1h > 5",
+            tag: "Tabular feature",
+            desc: "Counts transactions in the last hour. More than five signals rapid repeat activity.",
+          },
+          l1b: {
+            x: l1X[1],
+            y: YS.l1,
+            size: 33,
+            label: "cross_border = true",
+            side: "top",
+            title: "Split: cross_border = true",
+            tag: "Tabular feature",
+            desc: "Separates cross-border transfers from domestic ones.",
+          },
+          l2a: {
+            x: l2X[0],
+            y: YS.l2,
+            size: 33,
+            label: "anomaly_score > 0.7",
+            side: "top",
+            title: "Split: anomaly_score > 0.7",
+            tag: "Anomaly score",
+            desc: "Uses the isolation score from the Anomaly Extractor to pick out unusual high-value activity.",
+          },
+          l2b: {
+            x: l2X[1],
+            y: YS.l2,
+            size: 33,
+            label: "sage_emb_12 > 0.4",
+            side: "top",
+            title: "Split: sage_emb_12 > 0.4",
+            tag: "GraphSAGE embedding",
+            desc: "One of the 32 sage_emb_* features, capturing where the account sits in the transaction graph.",
+          },
+          l2c: {
+            x: l2X[2],
+            y: YS.l2,
+            size: 33,
+            label: "geo_mismatch",
+            side: "top",
+            title: "Split: geo_mismatch",
+            tag: "Tabular feature",
+            desc: "Flags a login region that does not match the payment corridor.",
+          },
+          l2d: {
+            x: l2X[3],
+            y: YS.l2,
+            size: 33,
+            label: "pagerank > 0.01",
+            side: "top",
+            title: "Split: pagerank > 0.01",
+            tag: "Graph centrality",
+            desc: "A centrality measure from the Graph Analyzer. High values mean the account sits at the center of many transfers.",
+          },
         };
+        var splitOrder = ["root", "l1a", "l1b", "l2a", "l2b", "l2c", "l2d"];
 
-        var leafInfo = [
+        var leaves = [
           {
-            flagged: true,
-            prob: "0.95 fraud probability",
-            desc: "Large domestic transfer with rapid repeat velocity — escalated immediately.",
+            f: true,
+            p: 0.94,
+            desc: "High amount, rapid velocity and an elevated anomaly score together.",
           },
           {
-            flagged: false,
-            prob: "0.03 fraud probability",
-            desc: "Small, recurring domestic payment matching prior behavior.",
+            f: false,
+            p: 0.08,
+            desc: "High amount and velocity, but the anomaly score is normal.",
           },
           {
-            flagged: false,
-            prob: "0.06 fraud probability",
-            desc: "Established payee, amount within normal range.",
+            f: true,
+            p: 0.88,
+            desc: "High amount with a graph embedding that resembles known risky neighborhoods.",
           },
           {
-            flagged: true,
-            prob: "0.89 fraud probability",
-            desc: "High amount paired with a brand-new beneficiary — held for review.",
+            f: false,
+            p: 0.12,
+            desc: "High amount, but low velocity and a benign graph embedding.",
           },
           {
-            flagged: false,
-            prob: "0.08 fraud probability",
-            desc: "Domestic transfer, moderate amount, no velocity flags.",
+            f: true,
+            p: 0.91,
+            desc: "Cross-border transfer where the login region does not match the payment corridor.",
           },
           {
-            flagged: false,
-            prob: "0.05 fraud probability",
-            desc: "Routine bill payment to a long-standing payee.",
+            f: false,
+            p: 0.07,
+            desc: "Cross-border, but consistent with the account's usual corridor.",
           },
           {
-            flagged: false,
-            prob: "0.10 fraud probability",
-            desc: "Slight velocity uptick but within seasonal norms.",
+            f: true,
+            p: 0.78,
+            desc: "Domestic, but unusually central in the transaction graph.",
           },
           {
-            flagged: true,
-            prob: "0.87 fraud probability",
-            desc: "Cross-border transfer combined with a device change — compliance hold.",
-          },
-          {
-            flagged: false,
-            prob: "0.07 fraud probability",
-            desc: "Cross-border but consistent with the account's usual corridor.",
-          },
-          {
-            flagged: true,
-            prob: "0.92 fraud probability",
-            desc: "New beneficiary plus geo-mismatch — routed to a human reviewer.",
-          },
-          {
-            flagged: false,
-            prob: "0.04 fraud probability",
-            desc: "Matches the account's established geographic pattern.",
-          },
-          {
-            flagged: false,
-            prob: "0.09 fraud probability",
-            desc: "Minor cross-border activity, low amount, no other flags.",
-          },
-          {
-            flagged: true,
-            prob: "0.90 fraud probability",
-            desc: "Device change and velocity spike occurring together — flagged.",
-          },
-          {
-            flagged: false,
-            prob: "0.06 fraud probability",
-            desc: "Familiar device, stable transaction cadence.",
-          },
-          {
-            flagged: false,
-            prob: "0.11 fraud probability",
-            desc: "New device but amount and velocity both low-risk.",
-          },
-          {
-            flagged: true,
-            prob: "0.93 fraud probability",
-            desc: "Geo-mismatch, new beneficiary, and high amount stacking together.",
+            f: false,
+            p: 0.03,
+            desc: "Domestic with low graph centrality. Nothing unusual.",
           },
         ];
 
-        var edges = [];
-        for (var d = 0; d < xLevels.length - 1; d++) {
-          xLevels[d].forEach(function (px, pi) {
-            [2 * pi, 2 * pi + 1].forEach(function (ci) {
-              edges.push({
-                x1: px,
-                y1: ys[d],
-                x2: xLevels[d + 1][ci],
-                y2: ys[d + 1],
-                key: d + "-" + pi + "-" + ci,
-              });
-            });
-          });
+        var inputs = [
+          {
+            id: "in_tab",
+            x: 270,
+            text: "Tabular Features",
+            amber: false,
+            title: "Tabular Features",
+            tag: "Part of X_train_final",
+            desc: "Transaction-level features such as amount, velocity, cross-border and geo-mismatch indicators.",
+          },
+          {
+            id: "in_anom",
+            x: 590,
+            text: "Anomaly Scores",
+            amber: false,
+            title: "Anomaly Scores",
+            tag: "Part of X_train_final",
+            desc: "Isolation-based anomaly scores attached by the Anomaly Extractor.",
+          },
+          {
+            id: "in_graph",
+            x: 910,
+            text: "Graph Centralities",
+            amber: false,
+            title: "Graph Centralities",
+            tag: "Part of X_train_final",
+            desc: "Network centrality features computed by the Graph Analyzer.",
+          },
+          {
+            id: "in_gnn",
+            x: 1230,
+            text: "32 GNN Embeddings",
+            amber: true,
+            title: "32 GraphSAGE Embeddings",
+            tag: "sage_emb_*",
+            desc: "The 32 structural embedding features distilled by GraphSAGE over 100 training epochs.",
+          },
+        ];
+
+        var info = {
+          fusion: {
+            title: "X_train_final",
+            tag: "The training matrix",
+            desc: "XGBoost trains on this fused table: tabular features, anomaly scores, graph centralities and the 32 GraphSAGE embeddings, side by side for every record.",
+          },
+        };
+
+        // ---------- stream registry ----------
+        var streamOf = {}; // node id -> [stream ids]
+        var edgeCount = 0;
+        function addStream(sid, d, opts) {
+          opts = opts || {};
+          var pid = "p" + edgeCount++;
+          var g = el("g", { "data-stream": sid }, edgeLayer);
+          el("path", { id: pid, d: d, class: opts.cls || "edge" }, g);
+          var pg = el("g", { "data-stream": sid }, particleLayer);
+          var n = opts.count || 2,
+            dur = opts.dur || 0.8 + Math.random() * 0.5;
+          for (var i = 0; i < n; i++) {
+            var c = el(
+              "circle",
+              {
+                r: opts.r || 5.5,
+                class: "particle" + (opts.amber ? " amber" : ""),
+              },
+              pg,
+            );
+            var a = el(
+              "animateMotion",
+              {
+                dur: dur.toFixed(2) + "s",
+                repeatCount: "indefinite",
+                begin: ((-i * dur) / n - Math.random() * 0.2).toFixed(2) + "s",
+              },
+              c,
+            );
+            var m = document.createElementNS(svgns, "mpath");
+            m.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#" + pid);
+            a.appendChild(m);
+          }
+        }
+        function link(nodeId, sids) {
+          streamOf[nodeId] = (streamOf[nodeId] || []).concat(sids);
         }
 
-        edges.forEach(function (e, idx) {
-          var pid = "tedge" + idx;
-          var path = document.createElementNS(svgns, "path");
-          path.setAttribute("id", pid);
-          path.setAttribute("class", "edge");
-          path.setAttribute(
-            "d",
-            "M" + e.x1 + "," + e.y1 + " L" + e.x2 + "," + e.y2,
+        // ---------- inputs -> X_train_final -> root ----------
+        var barTx = [650, 715, 785, 850];
+        inputs.forEach(function (inp, i) {
+          var d =
+            "M" +
+            inp.x +
+            ",82 C" +
+            inp.x +
+            ",100 " +
+            barTx[i] +
+            ",94 " +
+            barTx[i] +
+            ",112";
+          addStream("feed" + i, d, {
+            cls: "feed",
+            count: 3,
+            dur: 1.5,
+            amber: inp.amber,
+          });
+          link(inp.id, ["feed" + i]);
+          link("fusion", ["feed" + i]);
+        });
+        addStream(
+          "bar2root",
+          "M" + ROOT_X + ",168 L" + ROOT_X + "," + (YS.root - 40),
+          { cls: "feed", count: 4, dur: 1.4, amber: true },
+        );
+        link("fusion", ["bar2root"]);
+        link("root", ["bar2root"]);
+
+        // ---------- tree edges ----------
+        var treeEdges = [
+          ["root", "l1a", ROOT_X, YS.root, l1X[0], YS.l1],
+          ["root", "l1b", ROOT_X, YS.root, l1X[1], YS.l1],
+          ["l1a", "l2a", l1X[0], YS.l1, l2X[0], YS.l2],
+          ["l1a", "l2b", l1X[0], YS.l1, l2X[1], YS.l2],
+          ["l1b", "l2c", l1X[1], YS.l1, l2X[2], YS.l2],
+          ["l1b", "l2d", l1X[1], YS.l1, l2X[3], YS.l2],
+        ];
+        var leafParents = [
+          "l2a",
+          "l2a",
+          "l2b",
+          "l2b",
+          "l2c",
+          "l2c",
+          "l2d",
+          "l2d",
+        ];
+        var l2y = YS.l2;
+        treeEdges.forEach(function (e, i) {
+          var sid = "t" + i;
+          addStream(sid, "M" + e[2] + "," + e[3] + " L" + e[4] + "," + e[5], {
+            count: 2,
+            dur: 0.9,
+          });
+          link(e[0], [sid]);
+          link(e[1], [sid]);
+        });
+        leafX.forEach(function (x, k) {
+          var sid = "L" + k;
+          var px = splits[leafParents[k]].x;
+          addStream(
+            sid,
+            "M" + px + "," + l2y + " L" + x + "," + (YS.leaf - LEAF_H / 2),
+            { count: 2, dur: 0.8 },
           );
-          edgeLayer.appendChild(path);
+          link(leafParents[k], [sid]);
+          link("leaf" + k, [sid]);
+        });
+        // splits light their ancestors' streams too
+        link("l1a", ["t0", "t2", "t3"]);
+        link("l1b", ["t1", "t4", "t5"]);
+        link("root", ["t0", "t1"]);
 
-          var label = splitLabels[e.key];
-          if (label) {
-            var t = document.createElementNS(svgns, "text");
-            t.setAttribute("x", (e.x1 + e.x2) / 2 + (e.x2 > e.x1 ? 46 : -46));
-            t.setAttribute("y", (e.y1 + e.y2) / 2 - 8);
-            t.setAttribute("class", "split-label");
-            t.textContent = label;
-            splitLabelLayer.appendChild(t);
-          }
+        // ---------- inputs UI ----------
+        inputs.forEach(function (inp) {
+          var g = el(
+            "g",
+            {
+              class: "node",
+              "data-id": inp.id,
+              tabindex: "0",
+              role: "button",
+              "aria-label": inp.title,
+            },
+            inputLayer,
+          );
+          el(
+            "rect",
+            {
+              class: "chip" + (inp.amber ? " amber" : ""),
+              x: inp.x - 150,
+              y: 26,
+              width: 300,
+              height: 56,
+              rx: 28,
+            },
+            g,
+          );
+          var t = el("text", { class: "chip-text", x: inp.x, y: 63 }, g);
+          t.textContent = inp.text;
+          el(
+            "rect",
+            {
+              class: "node-hit",
+              x: inp.x - 156,
+              y: 20,
+              width: 312,
+              height: 68,
+            },
+            g,
+          );
+          wire(g, inp.id, inp);
+        });
+        var fg = el(
+          "g",
+          {
+            class: "node",
+            "data-id": "fusion",
+            tabindex: "0",
+            role: "button",
+            "aria-label": "X_train_final",
+          },
+          inputLayer,
+        );
+        el(
+          "rect",
+          {
+            class: "fusion",
+            x: ROOT_X - 250,
+            y: 112,
+            width: 500,
+            height: 56,
+            rx: 16,
+            filter: "url(#nodeGlow)",
+          },
+          fg,
+        );
+        var ft = el("text", { class: "fusion-text", x: ROOT_X, y: 151 }, fg);
+        ft.textContent = "X_train_final";
+        el(
+          "rect",
+          {
+            class: "node-hit",
+            x: ROOT_X - 256,
+            y: 106,
+            width: 512,
+            height: 68,
+          },
+          fg,
+        );
+        wire(fg, "fusion", info.fusion);
 
-          for (var i = 0; i < 2; i++) {
-            var p = document.createElementNS(svgns, "circle");
-            p.setAttribute("r", "3.2");
-            p.setAttribute("class", "particle");
-            var anim = document.createElementNS(svgns, "animateMotion");
-            anim.setAttribute(
-              "dur",
-              (0.65 + Math.random() * 0.45).toFixed(2) + "s",
-            );
-            anim.setAttribute("repeatCount", "indefinite");
-            anim.setAttribute("begin", (Math.random() * 1.2).toFixed(2) + "s");
-            var mpath = document.createElementNS(svgns, "mpath");
-            mpath.setAttributeNS(
-              "http://www.w3.org/1999/xlink",
-              "href",
-              "#" + pid,
-            );
-            anim.appendChild(mpath);
-            p.appendChild(anim);
-            particleLayer.appendChild(p);
-          }
+        // ---------- diamonds ----------
+        splitOrder.forEach(function (id) {
+          var s = splits[id];
+          var g = el(
+            "g",
+            {
+              class: "node",
+              "data-id": id,
+              tabindex: "0",
+              role: "button",
+              "aria-label": s.title,
+            },
+            treeLayer,
+          );
+          var d =
+            "M" +
+            s.x +
+            "," +
+            (s.y - s.size) +
+            " L" +
+            (s.x + s.size) +
+            "," +
+            s.y +
+            " L" +
+            s.x +
+            "," +
+            (s.y + s.size) +
+            " L" +
+            (s.x - s.size) +
+            "," +
+            s.y +
+            " Z";
+          el("path", { class: "decision", d: d, filter: "url(#nodeGlow)" }, g);
+          var lx = s.side === "right" ? s.x + s.size + 18 : s.x;
+          var ly = s.side === "right" ? s.y + 8 : s.y - s.size - 14;
+          var t = el(
+            "text",
+            {
+              class: "split-label" + (s.side === "right" ? " start" : ""),
+              x: lx,
+              y: ly,
+            },
+            g,
+          );
+          t.textContent = s.label;
+          el(
+            "rect",
+            {
+              class: "node-hit",
+              x: s.x - s.size - 8,
+              y: s.y - s.size - 8,
+              width: (s.size + 8) * 2,
+              height: (s.size + 8) * 2,
+            },
+            g,
+          );
+          wire(g, id, s);
         });
 
-        // decision nodes: root + levels 1-4 (not the leaves), oversized diamonds
-        for (var d = 0; d < xLevels.length - 1; d++) {
-          xLevels[d].forEach(function (x) {
-            var y = ys[d];
-            var size = d === 0 ? 20 : 15;
-            var pd =
-              "M" +
-              x +
-              "," +
-              (y - size) +
-              " L" +
-              (x + size) +
-              "," +
-              y +
-              " L" +
-              x +
-              "," +
-              (y + size) +
-              " L" +
-              (x - size) +
-              "," +
-              y +
-              " Z";
-            var poly = document.createElementNS(svgns, "path");
-            poly.setAttribute("d", pd);
-            poly.setAttribute("class", "decision");
-            poly.setAttribute("filter", "url(#glow)");
-            var hit = document.createElementNS(svgns, "circle");
-            hit.setAttribute("cx", x);
-            hit.setAttribute("cy", y);
-            hit.setAttribute("r", "28");
-            hit.setAttribute("class", "hit");
-            hit.addEventListener(
-              "mouseenter",
-              (function (pl) {
-                return function () {
-                  pl.classList.add("hover-lit");
-                  infoTitle.textContent = "Decision split";
-                  infoRate.textContent = "Feature threshold test";
-                  infoDesc.textContent =
-                    "Each split tests one tabular feature and routes the transaction left or right down the tree.";
-                  infoPanel.classList.add("lit");
-                };
-              })(poly),
-            );
-            hit.addEventListener(
-              "mouseleave",
-              (function (pl) {
-                return function () {
-                  pl.classList.remove("hover-lit");
-                  resetInfo();
-                };
-              })(poly),
-            );
-            decisionLayer.appendChild(poly);
-            decisionLayer.appendChild(hit);
-          });
-        }
-
-        // leaf nodes (deepest level), scaled-up terminal blocks
-        var leafLevel = xLevels.length - 1;
-        xLevels[leafLevel].forEach(function (x, i) {
-          var y = ys[leafLevel];
-          var info = leafInfo[i];
-          var rect = document.createElementNS(svgns, "rect");
-          rect.setAttribute("x", x - 36);
-          rect.setAttribute("y", y - 18);
-          rect.setAttribute("width", "72");
-          rect.setAttribute("height", "36");
-          rect.setAttribute("rx", "7");
-          rect.setAttribute(
-            "class",
-            "leaf-box " + (info.flagged ? "flagged" : "clear"),
+        // ---------- leaves ----------
+        leaves.forEach(function (lf, k) {
+          var x = leafX[k],
+            y = YS.leaf;
+          var g = el(
+            "g",
+            {
+              class: "node",
+              "data-id": "leaf" + k,
+              tabindex: "0",
+              role: "button",
+              "aria-label": lf.f ? "Flagged leaf" : "Clear leaf",
+            },
+            treeLayer,
           );
-          if (info.flagged) {
-            var op = document.createElementNS(svgns, "animate");
-            op.setAttribute("attributeName", "opacity");
-            op.setAttribute("values", "1;0.55;1");
-            op.setAttribute(
-              "dur",
-              (1.5 + Math.random() * 0.6).toFixed(2) + "s",
+          var r = el(
+            "rect",
+            {
+              class: "leaf-box " + (lf.f ? "flagged" : "clear"),
+              x: x - LEAF_W / 2,
+              y: y - LEAF_H / 2,
+              width: LEAF_W,
+              height: LEAF_H,
+              rx: 16,
+            },
+            g,
+          );
+          if (lf.f) {
+            var op = el(
+              "animate",
+              {
+                attributeName: "fill-opacity",
+                values: "1;0.55;1",
+                dur: (1.5 + Math.random() * 0.6).toFixed(2) + "s",
+                repeatCount: "indefinite",
+              },
+              r,
             );
-            op.setAttribute("repeatCount", "indefinite");
-            rect.appendChild(op);
           }
-          leafLayer.appendChild(rect);
-
-          var text = document.createElementNS(svgns, "text");
-          text.setAttribute("x", x);
-          text.setAttribute("y", y + 4.5);
-          text.setAttribute(
-            "class",
-            "leaf-text " + (info.flagged ? "flagged" : "clear"),
+          var t = el(
+            "text",
+            {
+              class: "leaf-text " + (lf.f ? "flagged" : "clear"),
+              x: x,
+              y: y - 4,
+            },
+            g,
           );
-          text.textContent = info.flagged ? "Flagged" : "Clear";
-          leafLayer.appendChild(text);
-
-          var hit = document.createElementNS(svgns, "rect");
-          hit.setAttribute("x", x - 38);
-          hit.setAttribute("y", y - 24);
-          hit.setAttribute("width", "76");
-          hit.setAttribute("height", "48");
-          hit.setAttribute("class", "hit");
-          hit.addEventListener("mouseenter", function () {
-            infoTitle.textContent = info.flagged
-              ? "Leaf — flagged"
-              : "Leaf — clear";
-            infoRate.textContent = info.prob;
-            infoDesc.textContent = info.desc;
-            infoPanel.classList.add("lit");
+          t.textContent = lf.f ? "Flagged" : "Clear";
+          var s = el("text", { class: "leaf-sub", x: x, y: y + 25 }, g);
+          s.textContent = "p = " + lf.p.toFixed(2);
+          el(
+            "rect",
+            {
+              class: "node-hit",
+              x: x - LEAF_W / 2 - 6,
+              y: y - LEAF_H / 2 - 6,
+              width: LEAF_W + 12,
+              height: LEAF_H + 12,
+            },
+            g,
+          );
+          wire(g, "leaf" + k, {
+            title: lf.f ? "Leaf: Flagged" : "Leaf: Clear",
+            tag:
+              "p = " +
+              lf.p.toFixed(2) +
+              (lf.f ? " ≥ 0.65 → Flagged" : " < 0.65 → Clear"),
+            desc: lf.desc,
           });
-          hit.addEventListener("mouseleave", resetInfo);
-          leafLayer.appendChild(hit);
         });
 
+        // ---------- threshold legend ----------
+        var ly = 748;
+        var t1 = el(
+          "text",
+          { class: "legend-text", x: 150, y: ly },
+          legendLayer,
+        );
+        t1.textContent = "Validation threshold: 0.65";
+        el(
+          "rect",
+          {
+            x: 700,
+            y: ly - 26,
+            width: 34,
+            height: 30,
+            rx: 7,
+            fill: "rgba(245,185,66,0.24)",
+            stroke: "var(--amber)",
+            "stroke-width": 3,
+          },
+          legendLayer,
+        );
+        var t2 = el(
+          "text",
+          { class: "legend-text dim", x: 748, y: ly },
+          legendLayer,
+        );
+        t2.textContent = "p ≥ 0.65 → Flagged";
+        el(
+          "rect",
+          {
+            x: 1060,
+            y: ly - 26,
+            width: 34,
+            height: 30,
+            rx: 7,
+            fill: "var(--blue-dark)",
+            stroke: "var(--blue)",
+            "stroke-width": 3,
+          },
+          legendLayer,
+        );
+        var t3 = el(
+          "text",
+          { class: "legend-text dim", x: 1108, y: ly },
+          legendLayer,
+        );
+        t3.textContent = "p < 0.65 → Clear";
+
+        // ---------- interaction ----------
         var infoPanel = document.getElementById("infoPanel");
         var infoTitle = document.getElementById("infoTitle");
         var infoRate = document.getElementById("infoRate");
         var infoDesc = document.getElementById("infoDesc");
-        function resetInfo() {
-          infoTitle.textContent = "Tabular Decision Ensemble";
-          infoRate.textContent = "Gradient-boosted feature splits";
-          infoDesc.textContent =
-            "Hover a leaf to see how that path scored, or a split to see the feature it tested.";
-          infoPanel.classList.remove("lit");
-        }
 
-        var throughputEl = document.getElementById("throughput");
-        var total = 0;
-        setInterval(function () {
-          total += Math.floor(1400 + Math.random() * 2600);
-          throughputEl.innerHTML =
-            total.toLocaleString() + " <span>transactions scored</span>";
-        }, 450);
+        function wire(node, id, data) {
+          function on() {
+            var lit = streamOf[id] || [];
+            document.querySelectorAll("[data-stream]").forEach(function (s) {
+              s.classList.toggle(
+                "active",
+                lit.indexOf(s.getAttribute("data-stream")) > -1,
+              );
+            });
+            document.querySelectorAll(".node").forEach(function (n) {
+              n.classList.toggle("hot", n === node);
+            });
+            infoTitle.textContent = data.title;
+            infoRate.textContent = data.tag;
+            infoDesc.textContent = data.desc;
+            infoPanel.classList.add("lit");
+          }
+          function off() {
+            document.querySelectorAll("[data-stream]").forEach(function (s) {
+              s.classList.remove("active");
+            });
+            document.querySelectorAll(".node").forEach(function (n) {
+              n.classList.remove("hot");
+            });
+            infoTitle.textContent = "Gradient-Boosted Decision Ensemble";
+            infoRate.textContent =
+              "Fits on X_train_final · validated at the 0.65 threshold";
+            infoDesc.textContent =
+              "Hover an input, a split or a leaf to see how fused features become a flagged or clear decision.";
+            infoPanel.classList.remove("lit");
+          }
+          node.addEventListener("mouseenter", on);
+          node.addEventListener("mouseleave", off);
+          node.addEventListener("focus", on);
+          node.addEventListener("blur", off);
+        }
 
         if (
           window.matchMedia &&
           window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ) {
-          var svgEl = document.querySelector("svg");
-          if (typeof svgEl.pauseAnimations === "function")
-            svgEl.pauseAnimations();
+          if (typeof svg.pauseAnimations === "function") svg.pauseAnimations();
         }
       })();
     </script>
