@@ -45,7 +45,7 @@ class ComplianceRiskEngine:
         ]
 
         result_df['Risk_Tier'] = np.select(
-            conditions=conditions, choicelist=tiers, default='0:Clean'
+            conditions, tiers, default='0:Clean'
         )
 
         # FIXED: Changed 'O:Clean' to '0:Clean' to correctly filter out clean accounts
