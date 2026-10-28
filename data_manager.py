@@ -115,6 +115,9 @@ class DataManager:
         print("\n--- Phase 4: Feature Engineering ---")
         print("Extracting time-based signals...")
 
+        # Explicitly cast Timestamp to datetime so .dt works natively
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
         # 1. Hour of the Day (0-23)
         df['Hour_Of_Day'] = df['Timestamp'].dt.hour
 
