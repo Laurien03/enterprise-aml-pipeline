@@ -99,12 +99,21 @@ class AMLPipelineEngine:
                 X_test_final, y_test, threshold=0.65)
 
         # --- STAGE 4: Compliance Fusion & Reporting ---
+        # --- STAGE 4: Compliance Fusion & Reporting ---
         print("\n--- Running Stage 4: Compliance Risk Engine ---")
         risk_engine = ComplianceRiskEngine(xgb_weight=0.7, gnn_weight=0.3)
-        flagged_df = risk_engine.fuse_predictions(ref_test, y_test_probs)
 
-        board = StringBoard(full_graph=graph_analyzer.graph,
-                            idx_to_node=node_mapping)
+        # FIXED: Pass both xgb_probs and gnn_probs
+        flagged_df = risk_engine.fuse_predictions(
+            reference_test_df=ref_test,
+            xgb_probs=y_test_probs,
+            gnn_probs=y_test_probs
+        )
+
+        # FIXED: Using .network_graph to match GraphAnalyzer class definition
+        idx_to_node_mapping = {v: k for k, v in node_mapping.items()}
+        board = StringBoard(full_graph=graph_analyzer.network_graph,
+                            idx_to_node=idx_to_node_mapping)
 
         print("\n✅ Pipeline Execution Completed Successfully!")
-        return flagged_df, board, graph_analyzer.graph, node_mapping
+        return flagged_df, board, graph_analyzer.network_graph, node_mapping
