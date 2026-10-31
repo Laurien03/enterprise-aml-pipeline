@@ -7,3 +7,5 @@ torch
 torch-geometric
 networkx
 streamlit
+matplotlib
+seaborn
