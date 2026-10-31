@@ -118,8 +118,6 @@ class AMLPipelineEngine:
         print("\n✅ Pipeline Execution Completed Successfully!")
 
         # --- MATPLOTLIB RESULTS VISUALIZATION BLOCK ---
-
-        # --- MATPLOTLIB RESULTS VISUALIZATION BLOCK ---
         try:
             print("\n📊 Rendering Backend Execution Results via Matplotlib...")
             plt.style.use('dark_background')
@@ -164,17 +162,10 @@ class AMLPipelineEngine:
 
             plt.tight_layout()
 
-            # Save figure to disk and render inline for Kaggle/Jupyter notebooks
-            plt.savefig("aml_risk_distribution.png",
-                        dpi=300, bbox_inches='tight')
+            # Render inline cleanly once
             plt.show()
-
-            try:
-                from IPython.display import display, Image
-                display(Image("aml_risk_distribution.png"))
-            except ImportError:
-                pass
 
         except Exception as e:
             print(f"⚠️ Matplotlib display skipped: {e}")
+
         return flagged_df, board, graph_analyzer.network_graph, node_mapping
