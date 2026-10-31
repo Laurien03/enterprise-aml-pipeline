@@ -1,4 +1,5 @@
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 from data_manager import DataManager
 from anomaly_detector import AnomalyDetector
 from graph_analyzer import GraphAnalyzer
@@ -99,7 +100,6 @@ class AMLPipelineEngine:
                 X_test_final, y_test, threshold=0.65)
 
         # --- STAGE 4: Compliance Fusion & Reporting ---
-        # --- STAGE 4: Compliance Fusion & Reporting ---
         print("\n--- Running Stage 4: Compliance Risk Engine ---")
         risk_engine = ComplianceRiskEngine(xgb_weight=0.7, gnn_weight=0.3)
 
@@ -116,4 +116,34 @@ class AMLPipelineEngine:
                             idx_to_node=idx_to_node_mapping)
 
         print("\n✅ Pipeline Execution Completed Successfully!")
+
+        # --- MATPLOTLIB RESULTS VISUALIZATION BLOCK ---
+        try:
+            print("\n📊 Rendering Backend Execution Results via Matplotlib...")
+            plt.style.use('dark_background')
+            fig, ax = plt.subplots(figsize=(10, 4))
+
+            if flagged_df is not None and 'risk_score' in flagged_df.columns:
+                sns.histplot(
+                    flagged_df['risk_score'],
+                    bins=30,
+                    kde=True,
+                    ax=ax,
+                    color='#00ffcc'
+                )
+                ax.axvline(0.65, color='orange', linestyle='--',
+                           label='Decision Threshold (0.65)')
+                ax.set_title("Compliance Risk Score Distribution (Stage 4)")
+                ax.set_xlabel("Risk Score")
+                ax.set_ylabel("Account Count")
+                ax.legend()
+            else:
+                ax.text(0.5, 0.5, "Pipeline Complete - Risk Scores Generated",
+                        horizontalalignment='center', transform=ax.transAxes, color='#00ffcc')
+
+            plt.tight_layout()
+            plt.show()
+        except Exception as e:
+            print(f"⚠️ Matplotlib display skipped: {e}")
+
         return flagged_df, board, graph_analyzer.network_graph, node_mapping
